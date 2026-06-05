@@ -94,7 +94,7 @@ export function AppSidebar() {
       <CollapseHandle />
 
       {/* Header */}
-      <SidebarHeader className="px-4 py-4 border-b border-nina-wine/40">
+      <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-3 border-b border-nina-wine/40">
         {/* Expandido */}
         <div className="group-data-[collapsible=icon]:hidden flex flex-col gap-1">
           <Image
@@ -105,17 +105,17 @@ export function AppSidebar() {
             priority
             className="w-full h-auto object-contain"
           />
-          <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+          <span className="text-[9px] font-black text-white/30 uppercase tracking-widest text-center mt-0.5">
             Bolão da Copa 2026
           </span>
         </div>
         {/* Colapsado */}
-        <div className="hidden group-data-[collapsible=icon]:flex justify-center">
+        <div className="hidden group-data-[collapsible=icon]:flex justify-center items-center">
           <Image
             src="/logo-nina.png"
             alt="Nina"
-            width={40}
-            height={40}
+            width={48}
+            height={48}
             priority
             className="w-full h-auto rounded-lg object-contain"
           />
