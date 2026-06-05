@@ -9,7 +9,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
-  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
@@ -96,32 +95,30 @@ export function AppSidebar() {
 
       {/* Header */}
       <SidebarHeader className="px-4 py-4 border-b border-nina-wine/40">
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Expandido: logo branca */}
-          <div className="group-data-[collapsible=icon]:hidden flex flex-col min-w-0 overflow-hidden">
-            <Image
-              src="/logo-branca-nina.png"
-              alt="Nina Logo"
-              width={100}
-              height={20}
-              priority
-              className="h-auto w-auto object-contain"
-            />
-            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest mt-1">
-              Bolão da Copa 2026
-            </span>
-          </div>
-          {/* Colapsado: logo ícone Nina */}
-          <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center">
-            <Image
-              src="/logo-nina.png"
-              alt="Nina"
-              width={32}
-              height={32}
-              priority
-              className="h-8 w-8 rounded-lg object-contain"
-            />
-          </div>
+        {/* Expandido */}
+        <div className="group-data-[collapsible=icon]:hidden flex flex-col gap-1">
+          <Image
+            src="/logo-branca-nina.png"
+            alt="Nina Logo"
+            width={160}
+            height={32}
+            priority
+            className="w-full h-auto object-contain"
+          />
+          <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+            Bolão da Copa 2026
+          </span>
+        </div>
+        {/* Colapsado */}
+        <div className="hidden group-data-[collapsible=icon]:flex justify-center">
+          <Image
+            src="/logo-nina.png"
+            alt="Nina"
+            width={40}
+            height={40}
+            priority
+            className="w-full h-auto rounded-lg object-contain"
+          />
         </div>
       </SidebarHeader>
 
@@ -134,7 +131,11 @@ export function AppSidebar() {
 
         {isAdmin && (
           <>
-            <SidebarSeparator className="my-3 bg-nina-wine/40" />
+            {/* Separador iluminado */}
+            <div className="relative my-4 mx-3 h-px">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="absolute inset-0 blur-sm bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+            </div>
             <SidebarGroup className="p-0">
               <SectionChip label="Administrador" icon={ShieldAlert} variant="admin" />
               <NavAdmin />
