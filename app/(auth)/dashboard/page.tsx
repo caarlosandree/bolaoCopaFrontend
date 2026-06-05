@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation"
 import type { Match, Round } from "@/lib/types"
 import { TeamFlag } from "@/components/ui/team-flag"
 import { RoundPanel } from "@/components/round-panel"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 type GuessState = {
   homeGuess: string
@@ -291,6 +292,56 @@ export default function DashboardPage() {
                 : `${palpitedCount} de ${matches.length} palpitados`}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Banner mobile do painel (visível apenas abaixo de lg) */}
+      {round && matches.length > 0 && (
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-3 lg:hidden">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-[10px] font-black tracking-wider text-slate-500 uppercase">
+                Progresso
+              </span>
+              <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+                {palpitedCount}/{matches.length}
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-green-700 to-green-500 transition-all duration-500"
+                style={{
+                  width:
+                    matches.length > 0
+                      ? `${(palpitedCount / matches.length) * 100}%`
+                      : "0%",
+                }}
+              />
+            </div>
+          </div>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 flex-shrink-0 cursor-pointer border border-slate-700/60 bg-slate-800/60 px-3 text-[11px] font-bold text-slate-300 hover:bg-slate-700/60"
+              >
+                Ver resumo
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="bottom"
+              className="max-h-[85vh] overflow-y-auto rounded-t-2xl border-slate-800 bg-slate-950 p-4"
+            >
+              <RoundPanel
+                roundName={round.name}
+                matches={matches}
+                palpitedCount={palpitedCount}
+                guesses={guesses}
+                onConfirmAll={handleConfirmAll}
+              />
+            </SheetContent>
+          </Sheet>
         </div>
       )}
 

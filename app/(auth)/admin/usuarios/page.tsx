@@ -9,7 +9,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Users, Search, Trash2, User, ShieldCheck } from "lucide-react"
@@ -50,7 +55,7 @@ export default function UsuariosPage() {
   const filtered = users.filter(
     (u) =>
       u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()),
+      u.email.toLowerCase().includes(search.toLowerCase())
   )
 
   async function handleDelete(userId: number) {
@@ -61,44 +66,50 @@ export default function UsuariosPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 border-2 border-nina-red border-t-transparent rounded-full animate-spin" />
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-nina-red border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+    <div className="mx-auto max-w-4xl animate-in space-y-6 duration-300 fade-in">
       {/* Page header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/60 pb-6">
+      <div className="flex flex-col justify-between gap-4 border-b border-slate-800/60 pb-6 md:flex-row md:items-center">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/5 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/5">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/20 to-indigo-600/5 shadow-lg shadow-indigo-500/5">
             <Users className="h-6 w-6 text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight">Gerenciar Usuários</h1>
-            <p className="text-xs text-slate-400 font-medium">
-              {users.length} participante{users.length !== 1 ? "s" : ""} cadastrado{users.length !== 1 ? "s" : ""} no bolão
+            <h1 className="text-2xl font-black tracking-tight text-white">
+              Gerenciar Usuários
+            </h1>
+            <p className="text-xs font-medium text-slate-400">
+              {users.length} participante{users.length !== 1 ? "s" : ""}{" "}
+              cadastrado{users.length !== 1 ? "s" : ""} no bolão
             </p>
           </div>
         </div>
 
         <div className="relative w-full md:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             placeholder="Buscar usuário por nome ou e-mail..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-4 h-11 rounded-xl bg-slate-900/80 border-slate-800/80 hover:border-slate-700/60 focus:border-indigo-500 text-white placeholder-slate-500 text-xs w-full transition-all"
+            className="h-11 w-full rounded-xl border-slate-800/80 bg-slate-900/80 pr-4 pl-10 text-xs text-white placeholder-slate-500 transition-all hover:border-slate-700/60 focus:border-indigo-500"
           />
         </div>
       </div>
 
-      <Card className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl">
-        <CardHeader className="border-b border-slate-800/60 py-5 px-6 bg-slate-950/30">
-          <CardTitle className="text-sm font-black text-slate-200 uppercase tracking-wider">Lista de Participantes</CardTitle>
+      <Card className="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60 shadow-xl backdrop-blur-md">
+        <CardHeader className="border-b border-slate-800/60 bg-slate-950/30 px-6 py-5">
+          <CardTitle className="text-sm font-black tracking-wider text-slate-200 uppercase">
+            Lista de Participantes
+          </CardTitle>
           <CardDescription className="text-xs text-slate-400">
-            Acompanhe a atividade e gerencie as permissões dos jogadores do bolão
+            Acompanhe a atividade e gerencie as permissões dos jogadores do
+            bolão
           </CardDescription>
         </CardHeader>
 
@@ -107,16 +118,25 @@ export default function UsuariosPage() {
             <TableHeader className="bg-slate-950/40">
               <TableRow className="border-slate-800/60 hover:bg-transparent">
                 <TableHead className="w-[60px]" />
-                <TableHead className="font-bold text-slate-300 text-xs">Participante</TableHead>
-                <TableHead className="font-bold text-slate-300 text-xs">Permissão / Cargo</TableHead>
-                <TableHead className="text-right font-bold text-slate-300 text-xs">Pontos Acumulados</TableHead>
+                <TableHead className="text-xs font-bold text-slate-300">
+                  Participante
+                </TableHead>
+                <TableHead className="text-xs font-bold text-slate-300">
+                  Permissão / Cargo
+                </TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-300">
+                  Pontos Acumulados
+                </TableHead>
                 <TableHead className="w-[80px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-slate-400 text-sm py-12 font-medium">
+                  <TableCell
+                    colSpan={5}
+                    className="py-12 text-center text-sm font-medium text-slate-400"
+                  >
                     {users.length === 0
                       ? "Nenhum usuário cadastrado no sistema ainda."
                       : "Nenhum participante encontrado com os critérios de busca."}
@@ -126,46 +146,53 @@ export default function UsuariosPage() {
                 filtered.map((user) => (
                   <TableRow
                     key={user.id}
-                    className="border-slate-800/60 hover:bg-slate-900/30 transition-colors group"
+                    className="group border-slate-800/60 transition-colors hover:bg-slate-900/30"
                   >
                     <TableCell className="p-3">
-                      <div className="h-9 w-9 rounded-full bg-slate-950/60 border border-slate-800 group-hover:border-indigo-500/30 flex items-center justify-center text-xs font-black text-slate-200 shadow-inner transition-all">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-800 bg-slate-950/60 text-xs font-black text-slate-200 shadow-inner transition-all group-hover:border-indigo-500/30">
                         {initials(user.name)}
                       </div>
                     </TableCell>
-                    
+
                     <TableCell className="py-3.5">
-                      <span className="font-bold text-slate-100 block text-sm group-hover:text-white transition-colors">{user.name}</span>
-                      <span className="text-xs text-slate-400 font-medium">{user.email}</span>
+                      <span className="block text-sm font-bold text-slate-100 transition-colors group-hover:text-white">
+                        {user.name}
+                      </span>
+                      <span className="text-xs font-medium text-slate-400">
+                        {user.email}
+                      </span>
                     </TableCell>
-                    
+
                     <TableCell>
                       {user.role === "admin" ? (
-                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-1">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-black tracking-wider text-indigo-400 uppercase">
                           <ShieldCheck className="h-3.5 w-3.5 animate-pulse" />
                           Admin
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-800/60 border border-slate-700/50 rounded-full px-2.5 py-1">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-700/50 bg-slate-800/60 px-2.5 py-1 text-[10px] font-black tracking-wider text-slate-400 uppercase">
                           <User className="h-3.5 w-3.5" />
                           Jogador
                         </span>
                       )}
                     </TableCell>
-                    
-                    <TableCell className="text-right font-black text-slate-100 text-sm">
-                      <span className="bg-slate-950/40 group-hover:bg-slate-950/70 border border-slate-800/40 px-3 py-1.5 rounded-lg shadow-inner text-white">
-                        {user.total_points} <span className="text-[10px] font-bold text-slate-500 uppercase ml-0.5">pts</span>
+
+                    <TableCell className="text-right text-sm font-black text-slate-100">
+                      <span className="rounded-lg border border-slate-800/40 bg-slate-950/40 px-3 py-1.5 text-white shadow-inner group-hover:bg-slate-950/70">
+                        {user.total_points}{" "}
+                        <span className="ml-0.5 text-[10px] font-bold text-slate-500 uppercase">
+                          pts
+                        </span>
                       </span>
                     </TableCell>
-                    
-                    <TableCell className="text-right pr-4">
+
+                    <TableCell className="pr-4 text-right">
                       {user.role !== "admin" && (
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(user.id)}
-                          className="h-9 w-9 text-slate-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-xl cursor-pointer transition-all"
+                          className="h-9 w-9 cursor-pointer rounded-xl border border-transparent text-slate-400 transition-all hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
                           title="Remover usuário"
                         >
                           <Trash2 className="h-4 w-4" />

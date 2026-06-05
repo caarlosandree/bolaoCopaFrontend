@@ -30,17 +30,19 @@ export function NavAdmin() {
               asChild
               isActive={active}
               className={cn(
-                "group h-10 rounded-xl font-semibold text-sm transition-all",
+                "group h-10 rounded-xl text-sm font-semibold transition-all",
                 active
-                  ? "bg-white/15 text-white shadow-sm border border-white/10"
-                  : "text-white/50 hover:text-white hover:bg-white/10",
+                  ? "border border-white/10 bg-white/15 text-white shadow-sm"
+                  : "text-white/50 hover:bg-white/10 hover:text-white"
               )}
             >
               <Link href={href} className="flex items-center gap-3">
                 <Icon
                   className={cn(
                     "h-4 w-4 flex-shrink-0 transition-colors",
-                    active ? "text-white" : "text-white/40 group-hover:text-white/80",
+                    active
+                      ? "text-white"
+                      : "text-white/40 group-hover:text-white/80"
                   )}
                 />
                 {label}
