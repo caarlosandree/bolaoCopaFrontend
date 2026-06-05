@@ -231,17 +231,89 @@ function FormSection({
   const form = asRecord(details.recent_form)
   const available = dataAvailable(details.recent_form)
 
+  const probability = useMemo(() => {
+    if (!available || !form) return null
+    const homeEvents = extractArray(form.home, ["schedule", "events"])
+    const awayEvents = extractArray(form.away, ["schedule", "events"])
+    return computeFormProbability(match.home_team, homeEvents, match.away_team, awayEvents)
+  }, [available, form, match.home_team, match.away_team])
+
   return (
     <Section icon={Activity} title="Últimos jogos" available={available}>
       {available && form ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <RecentTeamForm label={match.home_team} value={form.home} />
-          <RecentTeamForm label={match.away_team} value={form.away} />
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <RecentTeamForm label={match.home_team} value={form.home} />
+            <RecentTeamForm label={match.away_team} value={form.away} />
+          </div>
+          {probability && (
+            <FormProbabilityBar
+              homeTeam={match.home_team}
+              awayTeam={match.away_team}
+              probability={probability}
+            />
+          )}
         </div>
       ) : (
         <Unavailable detail={sourceMessage(details.recent_form)} />
       )}
     </Section>
+  )
+}
+
+type FormProbability = {
+  homeWin: number
+  draw: number
+  awayWin: number
+  matchCount: number
+}
+
+function FormProbabilityBar({
+  homeTeam,
+  awayTeam,
+  probability,
+}: {
+  homeTeam: string
+  awayTeam: string
+  probability: FormProbability
+}) {
+  const { homeWin, draw, awayWin, matchCount } = probability
+  return (
+    <div className="rounded-lg border border-slate-800/70 bg-slate-900/60 p-3">
+      <div className="mb-2 flex items-center justify-between text-[11px] font-black text-slate-300">
+        <span className="truncate max-w-[35%]">{homeTeam}</span>
+        <span className="text-slate-500">Probabilidade</span>
+        <span className="truncate max-w-[35%] text-right">{awayTeam}</span>
+      </div>
+      <div className="flex h-5 overflow-hidden rounded-full">
+        <div
+          className="flex items-center justify-center bg-green-600 text-[10px] font-black text-white transition-all"
+          style={{ width: `${homeWin}%` }}
+        >
+          {homeWin >= 12 ? `${homeWin}%` : ""}
+        </div>
+        <div
+          className="flex items-center justify-center bg-slate-500 text-[10px] font-black text-white transition-all"
+          style={{ width: `${draw}%` }}
+        >
+          {draw >= 12 ? `${draw}%` : ""}
+        </div>
+        <div
+          className="flex items-center justify-center bg-red-600 text-[10px] font-black text-white transition-all"
+          style={{ width: `${awayWin}%` }}
+        >
+          {awayWin >= 12 ? `${awayWin}%` : ""}
+        </div>
+      </div>
+      <div className="mt-1.5 flex justify-between text-[10px] text-slate-500">
+        <span>{homeWin}% vitória</span>
+        <span>{draw}% empate</span>
+        <span>{awayWin}% vitória</span>
+      </div>
+      <p className="mt-1 text-center text-[10px] text-slate-600">
+        Baseado nos últimos {matchCount} jogos de cada seleção
+      </p>
+    </div>
   )
 }
 
@@ -700,4 +772,48 @@ function normalize(value: string) {
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "")
+}
+
+function computeFormProbability(
+  homeTeam: string,
+  homeEvents: LooseRecord[],
+  awayTeam: string,
+  awayEvents: LooseRecord[]
+): FormProbability | null {
+  const homeResults = homeEvents
+    .map((e) => resultForTeam(homeTeam, e))
+    .filter((r): r is ResultCode => r !== null)
+  const awayResults = awayEvents
+    .map((e) => resultForTeam(awayTeam, e))
+    .filter((r): r is ResultCode => r !== null)
+
+  if (homeResults.length < 3 || awayResults.length < 3) return null
+
+  const rate = (results: ResultCode[], code: ResultCode) =>
+    results.filter((r) => r === code).length / results.length
+
+  const homeWinRate = rate(homeResults, "W")
+  const homeDrawRate = rate(homeResults, "D")
+  const homeLossRate = rate(homeResults, "L")
+  const awayWinRate = rate(awayResults, "W")
+  const awayDrawRate = rate(awayResults, "D")
+  const awayLossRate = rate(awayResults, "L")
+
+  const rawHome = (homeWinRate + awayLossRate) / 2
+  const rawDraw = (homeDrawRate + awayDrawRate) / 2
+  const rawAway = (homeLossRate + awayWinRate) / 2
+  const total = rawHome + rawDraw + rawAway
+
+  if (total === 0) return null
+
+  const homeWin = Math.round((rawHome / total) * 100)
+  const draw = Math.round((rawDraw / total) * 100)
+  const awayWin = 100 - homeWin - draw
+
+  return {
+    homeWin,
+    draw,
+    awayWin,
+    matchCount: Math.min(homeResults.length, awayResults.length),
+  }
 }
