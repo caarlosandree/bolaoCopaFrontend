@@ -50,7 +50,7 @@ function labelForSyncAction(action: string) {
     case "admin.sync.reset_schedule":
       return "Reset e reimportação"
     case "admin.sync.match_details":
-      return "Sync detalhes e odds"
+      return "Sync detalhes"
     default:
       return "Sincronização de calendário"
   }
@@ -63,9 +63,6 @@ function formatLogMetadata(metadata: Record<string, unknown>) {
   }
   if (typeof metadata.details_updated === "number") {
     parts.push(`${metadata.details_updated} detalhes`)
-  }
-  if (typeof metadata.odds_linked === "number") {
-    parts.push(`${metadata.odds_linked} odds`)
   }
   if (typeof metadata.failures === "number" && metadata.failures > 0) {
     parts.push(`${metadata.failures} falhas`)
@@ -185,10 +182,10 @@ export default function JogosPage() {
 
   async function handleSyncDetails() {
     setSyncingDetails(true)
-    addLog("Iniciando sync de detalhes e odds das partidas...")
+    addLog("Iniciando sync de detalhes das partidas...")
     try {
       const result = await syncMatchDetails()
-      addLog(`[OK] Detalhes: ${result.details_updated} atualizados, ${result.odds_linked} odds vinculadas.`)
+      addLog(`[OK] Detalhes: ${result.details_updated} atualizados.`)
       if (result.failures?.length > 0) {
         result.failures.forEach((f) => addLog(`[AVISO] ${f}`))
       }
@@ -378,7 +375,7 @@ export default function JogosPage() {
                 disabled={syncing || resetting || syncingDetails}
               >
                 <Database className={cn("h-3.5 w-3.5", syncingDetails && "animate-pulse")} />
-                {syncingDetails ? "Sincronizando detalhes..." : "Sync Detalhes e Odds"}
+                {syncingDetails ? "Sincronizando detalhes..." : "Sync Detalhes"}
               </Button>
 
               <Button

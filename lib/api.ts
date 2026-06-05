@@ -146,7 +146,6 @@ export function syncMatchDetails() {
     message: string
     schedule_imported: number
     details_updated: number
-    odds_linked: number
     failures: string[]
   }>("/api/admin/sync/match-details", { method: "POST" })
 }

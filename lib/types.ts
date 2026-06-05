@@ -56,7 +56,6 @@ export type Match = {
   thesportsdb_event_id?: string | null
   thesportsdb_home_team_id?: string | null
   thesportsdb_away_team_id?: string | null
-  odds_api_event_id?: string | null
   api_football_fixture_id?: string | null
   user_guess?: UserGuess | null
 }
@@ -70,7 +69,6 @@ export type SourceStatus = {
 }
 
 export type MatchDetailsAvailability = {
-  odds: boolean
   predictions: boolean
   form: boolean
   h2h: boolean
@@ -84,7 +82,6 @@ export type MatchDetailsAvailability = {
 export type MatchDetails = {
   match_id: number
   availability: MatchDetailsAvailability
-  odds: unknown | null
   predictions: unknown | null
   recent_form: unknown | null
   head_to_head: unknown | null

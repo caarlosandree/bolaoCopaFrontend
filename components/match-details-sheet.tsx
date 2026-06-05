@@ -7,7 +7,6 @@ import {
   CalendarClock,
   CircleHelp,
   Info,
-  LineChart,
   MapPin,
   ShieldAlert,
   Shirt,
@@ -112,7 +111,6 @@ export function MatchDetailsSheet({ match }: MatchDetailsSheetProps) {
 
           {!loading && !error && details && (
             <>
-              <OddsSection details={details} />
               <FormSection details={details} match={match} />
               <LineupsSection details={details} match={match} />
               <StatsSection details={details} />
@@ -187,37 +185,6 @@ function TeamBlock({ name, align }: { name: string; align: "left" | "right" }) {
       <TeamFlag teamName={name} className="h-10 w-10 border border-white/10" />
       <span className="truncate text-sm font-black text-white">{name}</span>
     </div>
-  )
-}
-
-function OddsSection({ details }: { details: MatchDetails }) {
-  const odds = asRecord(details.odds)
-  const bookmakers = asRecord(odds?.bookmakers)
-  const bookmakerNames = bookmakers ? Object.keys(bookmakers).slice(0, 4) : []
-  const available = dataAvailable(details.odds)
-
-  return (
-    <Section icon={LineChart} title="Odds de mercado" available={available}>
-      {bookmakerNames.length > 0 ? (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {bookmakerNames.map((name) => (
-            <div
-              key={name}
-              className="rounded-lg border border-slate-800/70 bg-slate-900/60 p-2"
-            >
-              <p className="text-xs font-black text-white">{name}</p>
-              <pre className="mt-1 max-h-20 overflow-hidden text-[10px] whitespace-pre-wrap text-slate-500">
-                {JSON.stringify(bookmakers?.[name], null, 2)}
-              </pre>
-            </div>
-          ))}
-        </div>
-      ) : available ? (
-        <RawPreview value={details.odds} />
-      ) : (
-        <Unavailable detail={sourceMessage(details.odds)} />
-      )}
-    </Section>
   )
 }
 
@@ -522,7 +489,7 @@ function EventsSection({ details }: { details: MatchDetails }) {
 }
 
 function SourceStatusSection({ details }: { details: MatchDetails }) {
-  const statuses = details.source_status ?? []
+  const statuses = (details.source_status ?? []).filter((s) => s.section !== "odds")
 
   return (
     <div className={SECTION_CLASS}>
@@ -728,7 +695,6 @@ function sectionLabel(value: string) {
     events: "eventos",
     form_home: "forma casa",
     form_away: "forma fora",
-    odds: "odds",
     lineups: "escalação",
   }
   return labels[value] ?? value
