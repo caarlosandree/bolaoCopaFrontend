@@ -30,15 +30,15 @@ export function NavJogador() {
               className={cn(
                 "group h-10 rounded-xl font-semibold text-sm transition-all",
                 active
-                  ? "bg-gradient-to-r from-nina-wine to-nina-purple text-white shadow-md shadow-nina-purple/20"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/60",
+                  ? "bg-white/15 text-white shadow-sm border border-white/10"
+                  : "text-white/50 hover:text-white hover:bg-white/10",
               )}
             >
               <Link href={href} className="flex items-center gap-3">
                 <Icon
                   className={cn(
                     "h-4 w-4 flex-shrink-0 transition-colors",
-                    active ? "text-white" : "text-slate-500 group-hover:text-slate-300",
+                    active ? "text-white" : "text-white/40 group-hover:text-white/80",
                   )}
                 />
                 {label}
