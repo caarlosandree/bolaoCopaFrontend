@@ -9,8 +9,9 @@ import {
   Flame,
   Calendar,
   Sparkles,
+  Trash2,
 } from "lucide-react"
-import { syncSchedule, getRecentMatches } from "@/lib/api"
+import { syncSchedule, resetSchedule, getRecentMatches } from "@/lib/api"
 import type { AdminMatch } from "@/lib/types"
 import { TeamFlag } from "@/components/ui/team-flag"
 import { cn } from "@/lib/utils"
@@ -37,6 +38,7 @@ export default function JogosPage() {
   const [matches, setMatches] = useState<AdminMatch[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
 
   async function loadMatches() {
@@ -69,7 +71,7 @@ export default function JogosPage() {
 
   async function handleSync() {
     setSyncing(true)
-    addLog("Iniciando sincronização de calendário (openfootball)...")
+    addLog("Iniciando sincronização de calendário (TheSportsDB)...")
     try {
       const result = await syncSchedule()
       addLog(
@@ -85,6 +87,21 @@ export default function JogosPage() {
     }
   }
 
+  async function handleReset() {
+    if (!confirm("Isso vai APAGAR todos os jogos, rodadas e palpites e reimportar do zero. Continuar?")) return
+    setResetting(true)
+    addLog("Resetando calendário e reimportando do TheSportsDB...")
+    try {
+      const result = await resetSchedule()
+      addLog(`[OK] ${result.message} — ${result.imported} partida(s) importada(s).`)
+      await loadMatches()
+    } catch (err) {
+      addLog(`[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`)
+    } finally {
+      setResetting(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {/* Header */}
@@ -97,7 +114,7 @@ export default function JogosPage() {
             Carga de Jogos
           </h1>
           <p className="text-xs text-slate-400">
-            Sincroniza o calendário da Copa do Mundo via base openfootball
+            Sincroniza o calendário da Copa do Mundo via TheSportsDB v2
           </p>
         </div>
       </div>
@@ -212,19 +229,31 @@ export default function JogosPage() {
               Sincronizador
             </h2>
             <p className="mb-5 text-xs leading-relaxed text-slate-300">
-              O sistema busca as rodadas e jogos diretamente da API
-              OpenFootball. Certifique-se de que os dados de rodadas estejam
-              cadastrados antes de atualizar o calendário.
+              O sistema busca rodadas e jogos via TheSportsDB v2. Cada rodada
+              agrupa todos os jogos daquela fase (ex: Rodada 1 = 24 jogos de
+              todos os grupos).
             </p>
 
-            <Button
-              className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-nina-orange to-nina-red font-bold text-white shadow-lg shadow-nina-orange/10 transition-all duration-300 hover:from-nina-orange/90 hover:to-nina-red/90 hover:shadow-nina-orange/20"
-              onClick={handleSync}
-              disabled={syncing}
-            >
-              <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-              {syncing ? "Sincronizando..." : "Sincronizar Calendário"}
-            </Button>
+            <div className="space-y-3">
+              <Button
+                className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-nina-orange to-nina-red font-bold text-white shadow-lg shadow-nina-orange/10 transition-all duration-300 hover:from-nina-orange/90 hover:to-nina-red/90 hover:shadow-nina-orange/20"
+                onClick={handleSync}
+                disabled={syncing || resetting}
+              >
+                <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
+                {syncing ? "Sincronizando..." : "Sincronizar Calendário"}
+              </Button>
+
+              <Button
+                variant="outline"
+                className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-red-800/60 bg-red-950/30 text-xs font-bold text-red-400 transition-all hover:border-red-700/80 hover:bg-red-950/60 hover:text-red-300"
+                onClick={handleReset}
+                disabled={syncing || resetting}
+              >
+                <Trash2 className={cn("h-3.5 w-3.5", resetting && "animate-pulse")} />
+                {resetting ? "Resetando..." : "Resetar e Reimportar"}
+              </Button>
+            </div>
           </Card>
 
           <div className="space-y-3">

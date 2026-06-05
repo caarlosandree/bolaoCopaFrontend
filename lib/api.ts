@@ -5,6 +5,7 @@ import type {
   AuthResponse,
   MatchDetails,
   RankingEntry,
+  RoundSummary,
   SyncResultsResult,
   SyncScheduleResult,
   User,
@@ -63,6 +64,15 @@ export function login(email: string, password: string) {
   })
 }
 
+// Rodadas
+export function getRounds() {
+  return request<RoundSummary[]>("/api/rounds")
+}
+
+export function getRoundById(id: number) {
+  return request<ActiveRoundResponse>(`/api/rounds/${id}`)
+}
+
 // Rodada ativa
 export function getActiveRound() {
   return request<ActiveRoundResponse>("/api/rounds/active")
@@ -114,6 +124,12 @@ export function syncSchedule() {
 
 export function syncResults() {
   return request<SyncResultsResult>("/api/admin/sync/results", {
+    method: "POST",
+  })
+}
+
+export function resetSchedule() {
+  return request<SyncScheduleResult>("/api/admin/sync/reset-schedule", {
     method: "POST",
   })
 }

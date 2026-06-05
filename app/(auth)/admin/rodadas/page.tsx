@@ -1,30 +1,20 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Layers,
-  Plus,
   PlayCircle,
   CheckCircle2,
   Clock,
-  Check,
+  Calendar,
+  Info,
 } from "lucide-react"
-import type { Round } from "@/lib/types"
-
-type RoundForm = { name: string; number: string }
-const EMPTY_FORM: RoundForm = { name: "", number: "" }
+import type { RoundSummary } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 const STATUS_CONFIG: Record<
-  Round["status"],
+  RoundSummary["status"],
   { label: string; color: string; icon: React.ReactNode }
 > = {
   upcoming: {
@@ -45,11 +35,18 @@ const STATUS_CONFIG: Record<
   },
 }
 
+function formatDate(iso: string | null): string {
+  if (!iso) return "—"
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
 export default function RodasPage() {
-  const [rounds, setRounds] = useState<Round[]>([])
-  const [form, setForm] = useState<RoundForm>(EMPTY_FORM)
-  const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [rounds, setRounds] = useState<RoundSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -57,9 +54,7 @@ export default function RodasPage() {
       try {
         const token = localStorage.getItem("token")
         const response = await fetch("/api/admin/rounds", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         })
         if (response.ok) {
           const data = await response.json()
@@ -75,59 +70,7 @@ export default function RodasPage() {
     fetchRounds()
   }, [])
 
-  function handleChange(field: keyof RoundForm, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }))
-    setSuccess(false)
-  }
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.name || !form.number) {
-      alert("Preencha todos os campos.")
-      return
-    }
-    setSaving(true)
-    try {
-      // TODO: implementar endpoint POST /admin/rounds se necessário no futuro
-      await new Promise((r) => setTimeout(r, 600))
-
-      const newRound: Round = {
-        id: Date.now(),
-        tournament_id: 1,
-        number: Number(form.number),
-        name: form.name,
-        status: "upcoming",
-        created_at: new Date().toISOString(),
-      }
-
-      setRounds((prev) => {
-        const updated = [...prev, newRound]
-        // Ordena por número da rodada
-        return updated.sort((a, b) => a.number - b.number)
-      })
-
-      setSuccess(true)
-      setForm(EMPTY_FORM)
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao criar rodada.")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleActivate(roundId: number) {
-    // TODO: implementar endpoint PATCH /admin/rounds/:id/activate se necessário no futuro
-    setRounds((prev) =>
-      prev.map((r) =>
-        r.id === roundId
-          ? { ...r, status: "active" }
-          : r.status === "active"
-            ? { ...r, status: "finished" } // As anteriores passam para finalizadas para simulação realista
-            : r
-      )
-    )
-  }
+  const activeRound = rounds.find((r) => r.status === "active")
 
   return (
     <div className="mx-auto max-w-3xl animate-in space-y-8 duration-300 fade-in">
@@ -141,75 +84,29 @@ export default function RodasPage() {
             Gerenciar Rodadas
           </h1>
           <p className="text-xs font-medium text-slate-400">
-            Crie e configure as fases do nosso bolão
+            Visão geral das fases do bolão — gerenciadas automaticamente
           </p>
         </div>
       </div>
 
-      {/* Formulário */}
-      <Card className="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60 shadow-xl backdrop-blur-md">
-        <CardHeader className="border-b border-slate-800/60 bg-slate-950/20 px-6 pb-4">
-          <CardTitle className="flex items-center gap-2 text-sm font-black tracking-wider text-slate-200 uppercase">
-            <Plus className="h-4 w-4 text-emerald-400" />
-            Nova Rodada
-          </CardTitle>
-          <CardDescription className="text-xs text-slate-400">
-            Adicione uma nova rodada de palpites para os usuários do sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <form onSubmit={handleCreate} className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="space-y-1.5 md:col-span-1">
-                <label className="pl-1 text-xs font-bold tracking-wider text-slate-300 uppercase">
-                  Número
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={form.number}
-                  onChange={(e) => handleChange("number", e.target.value)}
-                  placeholder="ex: 4"
-                  className="h-11 rounded-xl border-slate-800 bg-slate-950/80 font-bold text-white placeholder-slate-600 transition-all hover:border-slate-700/60 focus:border-emerald-500"
-                />
-              </div>
-              <div className="space-y-1.5 md:col-span-2">
-                <label className="pl-1 text-xs font-bold tracking-wider text-slate-300 uppercase">
-                  Nome da Rodada
-                </label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="ex: Oitavas de Final — Rodada Única"
-                  className="h-11 rounded-xl border-slate-800 bg-slate-950/80 text-white placeholder-slate-600 transition-all hover:border-slate-700/60 focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <Button
-                type="submit"
-                disabled={saving}
-                className="h-11 w-full cursor-pointer rounded-xl border border-emerald-500/20 bg-gradient-to-r from-nina-wine to-emerald-600 text-sm font-bold text-white shadow-lg shadow-emerald-950/20 transition-all hover:opacity-95 active:scale-[0.99]"
-              >
-                {saving ? (
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Criar Rodada
-                  </>
-                )}
-              </Button>
-
-              {success && (
-                <div className="flex animate-in items-center justify-center gap-1.5 text-xs font-black text-emerald-400 fade-in slide-in-from-top-1">
-                  <Check className="h-4 w-4" />
-                  <span>Rodada criada com sucesso e adicionada à lista!</span>
-                </div>
-              )}
-            </div>
-          </form>
+      {/* Card informativo */}
+      <Card className="overflow-hidden rounded-2xl border border-emerald-500/10 bg-emerald-950/20">
+        <CardContent className="flex items-start gap-3 p-4">
+          <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-400" />
+          <div className="space-y-1 text-xs text-slate-300">
+            <p className="font-bold text-emerald-300">Gerenciamento automático</p>
+            <p>
+              As rodadas são criadas automaticamente ao sincronizar o calendário.
+              Uma rodada é ativada <span className="font-bold text-white">24h antes do primeiro jogo</span> e
+              finalizada quando <span className="font-bold text-white">todos os jogos terminarem</span>.
+            </p>
+            {activeRound && (
+              <p className="mt-2 font-bold text-white">
+                Rodada ativa agora:{" "}
+                <span className="text-emerald-400">{activeRound.name}</span>
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -229,52 +126,56 @@ export default function RodasPage() {
               return (
                 <Card
                   key={round.id}
-                  className={`rounded-xl border bg-slate-900/40 backdrop-blur-md transition-all duration-200 hover:bg-slate-900/60 ${
+                  className={cn(
+                    "rounded-xl border bg-slate-900/40 backdrop-blur-md transition-all duration-200 hover:bg-slate-900/60",
                     round.status === "active"
                       ? "border-emerald-500/20 shadow-md shadow-emerald-500/2"
                       : "border-slate-800/80"
-                  }`}
+                  )}
                 >
                   <CardContent className="flex flex-col justify-between gap-4 p-4 sm:flex-row sm:items-center">
                     <div className="flex items-center gap-4">
                       <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-black transition-all ${
+                        className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-lg text-xs font-black transition-all",
                           round.status === "active"
                             ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-inner"
                             : "border border-slate-800 bg-slate-950/60 text-slate-400"
-                        }`}
+                        )}
                       >
                         #{round.number}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-100 group-hover:text-white">
+                        <p className="text-sm font-bold text-slate-100">
                           {round.name}
                         </p>
-                        <p className="mt-0.5 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                          ID: {round.id}
-                        </p>
+                        <div className="mt-0.5 flex items-center gap-3">
+                          <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">
+                            {round.match_count} jogo{round.match_count !== 1 ? "s" : ""}
+                          </span>
+                          {round.first_match_at && (
+                            <span className="flex items-center gap-1 text-[10px] text-slate-600">
+                              <Calendar className="h-2.5 w-2.5" />
+                              {formatDate(round.first_match_at)}
+                              {round.last_match_at && round.last_match_at !== round.first_match_at && (
+                                <> → {formatDate(round.last_match_at)}</>
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between gap-4 border-t border-slate-800/40 pt-3 sm:justify-end sm:border-0 sm:pt-0">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-black tracking-wider uppercase ${cfg.color}`}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-black tracking-wider uppercase",
+                          cfg.color
+                        )}
                       >
                         {cfg.icon}
                         {cfg.label}
                       </span>
-
-                      {round.status === "upcoming" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleActivate(round.id)}
-                          className="h-9 cursor-pointer rounded-xl border border-emerald-500/10 px-3 text-xs font-black text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-500/15 hover:text-white"
-                        >
-                          <PlayCircle className="mr-1.5 h-4 w-4" />
-                          Ativar
-                        </Button>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -286,7 +187,8 @@ export default function RodasPage() {
         {!loading && rounds.length === 0 && (
           <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-10 text-center shadow-inner">
             <p className="text-sm text-slate-400">
-              Nenhuma rodada cadastrada ainda.
+              Nenhuma rodada cadastrada ainda. Sincronize o calendário em{" "}
+              <span className="font-bold text-slate-300">Carga de Jogos</span>.
             </p>
           </div>
         )}

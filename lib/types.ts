@@ -24,6 +24,17 @@ export type Round = {
   created_at: string
 }
 
+export type RoundSummary = {
+  id: number
+  tournament_id: number
+  number: number
+  name: string
+  status: "upcoming" | "active" | "finished"
+  match_count: number
+  first_match_at: string | null
+  last_match_at: string | null
+}
+
 export type UserGuess = {
   id?: number
   home_guess: number

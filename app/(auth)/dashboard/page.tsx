@@ -16,14 +16,21 @@ import {
   Target,
   Trophy,
 } from "lucide-react"
-import { getActiveRound, saveGuess } from "@/lib/api"
+import { getRounds, getRoundById, saveGuess } from "@/lib/api"
 import { isLoggedIn } from "@/lib/auth"
 import { useRouter } from "next/navigation"
-import type { Match, Round } from "@/lib/types"
+import type { Match, Round, RoundSummary } from "@/lib/types"
 import { TeamFlag } from "@/components/ui/team-flag"
 import { RoundPanel } from "@/components/round-panel"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { MatchDetailsSheet } from "@/components/match-details-sheet"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type GuessState = {
   homeGuess: string
@@ -35,18 +42,22 @@ type GuessState = {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const [allRounds, setAllRounds] = useState<RoundSummary[]>([])
+  const [selectedRoundId, setSelectedRoundId] = useState<number | null>(null)
   const [round, setRound] = useState<Round | null>(null)
   const [matches, setMatches] = useState<Match[]>([])
   const [guesses, setGuesses] = useState<Record<number, GuessState>>({})
   const [pageLoading, setPageLoading] = useState(true)
+  const [roundLoading, setRoundLoading] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>(
     {}
   )
 
-  async function loadRound() {
+  async function loadRoundData(roundId: number) {
+    setRoundLoading(true)
     try {
-      const data = await getActiveRound()
+      const data = await getRoundById(roundId)
       setRound(data.round)
       setMatches(data.matches)
 
@@ -64,9 +75,11 @@ export default function DashboardPage() {
       }
       setGuesses(initialGuesses)
     } catch {
-      router.push("/login")
+      setRound(null)
+      setMatches([])
+      setGuesses({})
     } finally {
-      setPageLoading(false)
+      setRoundLoading(false)
     }
   }
 
@@ -75,8 +88,27 @@ export default function DashboardPage() {
       router.push("/login")
       return
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadRound()
+
+    async function init() {
+      try {
+        const rounds = await getRounds()
+        setAllRounds(rounds)
+
+        const active = rounds.find((r) => r.status === "active")
+        const target = active ?? rounds[rounds.length - 1] ?? null
+
+        if (target) {
+          setSelectedRoundId(target.id)
+          await loadRoundData(target.id)
+        }
+      } catch {
+        router.push("/login")
+      } finally {
+        setPageLoading(false)
+      }
+    }
+
+    init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -89,6 +121,12 @@ export default function DashboardPage() {
     const timers = debounceTimers.current
     return () => Object.values(timers).forEach(clearTimeout)
   }, [])
+
+  async function handleSelectRound(roundId: number) {
+    if (roundId === selectedRoundId) return
+    setSelectedRoundId(roundId)
+    await loadRoundData(roundId)
+  }
 
   function handleInputChange(
     matchId: number,
@@ -184,6 +222,7 @@ export default function DashboardPage() {
   }
 
   function isLocked(match: Match): boolean {
+    if (round?.status === "upcoming") return true
     if (match.status !== "scheduled") return true
     const diff = new Date(match.match_time).getTime() - currentTime.getTime()
     return diff <= 10 * 60 * 1000
@@ -266,6 +305,40 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full space-y-6">
+      {/* Seletor de rodadas */}
+      {allRounds.length > 0 && (
+        <Select
+          value={selectedRoundId ? String(selectedRoundId) : undefined}
+          onValueChange={(v) => handleSelectRound(Number(v))}
+        >
+          <SelectTrigger className="w-full max-w-xs border-slate-700/60 bg-slate-900/60 text-sm font-bold text-white focus:ring-nina-red/30">
+            <SelectValue placeholder="Selecionar rodada..." />
+          </SelectTrigger>
+          <SelectContent className="border-slate-700/60 bg-slate-900">
+            {allRounds.map((r) => (
+              <SelectItem
+                key={r.id}
+                value={String(r.id)}
+                className="font-medium text-slate-200 focus:bg-slate-800 focus:text-white"
+              >
+                <span className="flex items-center gap-2">
+                  {r.status === "active" && (
+                    <span className="h-1.5 w-1.5 flex-shrink-0 animate-pulse rounded-full bg-green-400" />
+                  )}
+                  {r.status === "finished" && (
+                    <CheckCircle2 className="h-3 w-3 flex-shrink-0 text-slate-500" />
+                  )}
+                  {r.status === "upcoming" && (
+                    <Clock className="h-3 w-3 flex-shrink-0 text-slate-600" />
+                  )}
+                  {r.name}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
       {/* Header full-width da rodada */}
       {round && matches.length > 0 && (
         <div className="flex flex-col gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4">
@@ -355,7 +428,11 @@ export default function DashboardPage() {
       )}
 
       {/* Layout principal: grid de cards + painel lateral */}
-      {round ? (
+      {roundLoading ? (
+        <div className="flex h-48 items-center justify-center">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-nina-red border-t-transparent" />
+        </div>
+      ) : round ? (
         <div className="flex flex-col items-start gap-6 lg:flex-row">
           {/* Área principal: grid de partidas */}
           <div className="min-w-0 flex-1">
@@ -658,10 +735,10 @@ export default function DashboardPage() {
       ) : (
         <Card className="rounded-2xl border border-slate-800 bg-slate-900/40 p-10 text-center">
           <AlertCircle className="mx-auto mb-3 h-8 w-8 text-nina-red/60" />
-          <h3 className="font-bold text-slate-200">Nenhuma rodada ativa</h3>
+          <h3 className="font-bold text-slate-200">Nenhuma rodada disponível</h3>
           <p className="mx-auto mt-1 max-w-sm text-xs text-slate-400">
-            Os palpites serão abertos assim que o administrador ativar uma
-            rodada.
+            As rodadas serão abertas automaticamente 24h antes do início dos
+            jogos.
           </p>
         </Card>
       )}
