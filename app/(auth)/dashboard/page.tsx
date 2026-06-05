@@ -19,6 +19,7 @@ import { isLoggedIn } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import type { Match, Round } from "@/lib/types"
 import { TeamFlag } from "@/components/ui/team-flag"
+import { RoundPanel } from "@/components/round-panel"
 
 type GuessState = {
   homeGuess: string
@@ -117,6 +118,20 @@ export default function DashboardPage() {
         [matchId]: { ...prev[matchId], loading: false },
       }))
     }
+  }
+
+  async function handleConfirmAll() {
+    const pending = matches.filter((m) => {
+      const g = guesses[m.id]
+      return (
+        g &&
+        !g.saved &&
+        !isLocked(m) &&
+        g.homeGuess !== "" &&
+        g.awayGuess !== ""
+      )
+    })
+    await Promise.all(pending.map((m) => handleSave(m.id)))
   }
 
   function isLocked(match: Match): boolean {
@@ -426,16 +441,15 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Painel lateral (placeholder — Fase 2) */}
+          {/* Painel lateral */}
           <aside className="sticky top-8 hidden w-72 flex-shrink-0 self-start lg:block">
-            <div className="space-y-4 rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4">
-              <p className="text-xs font-black tracking-wider text-slate-400 uppercase">
-                Resumo da Rodada
-              </p>
-              <div className="flex h-32 items-center justify-center rounded-xl border border-slate-800/60 bg-slate-800/40">
-                <p className="text-xs text-slate-600">Em breve</p>
-              </div>
-            </div>
+            <RoundPanel
+              roundName={round.name}
+              matches={matches}
+              palpitedCount={palpitedCount}
+              guesses={guesses}
+              onConfirmAll={handleConfirmAll}
+            />
           </aside>
         </div>
       ) : (
@@ -448,14 +462,6 @@ export default function DashboardPage() {
           </p>
         </Card>
       )}
-
-      {/* Legenda */}
-      <div className="flex items-center gap-2 rounded-2xl border border-slate-900 bg-slate-900/20 p-4 text-xs text-slate-400">
-        <AlertCircle className="h-4 w-4 flex-shrink-0 text-nina-red/60" />
-        <span>
-          Placar Exato = 5 pts | Saldo + Vencedor = 3 pts | Vencedor = 2 pts
-        </span>
-      </div>
     </div>
   )
 }
