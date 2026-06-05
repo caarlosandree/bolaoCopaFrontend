@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { LogOut, ShieldAlert, User, PanelLeftClose, PanelLeftOpen } from "lucide-react"
@@ -70,9 +71,16 @@ function SectionChip({
 export function AppSidebar() {
   const router = useRouter()
   const { state } = useSidebar()
-  const user = getUser()
-  const isAdmin = user?.role === "admin"
   const collapsed = state === "collapsed"
+
+  const [user, setUser] = React.useState<ReturnType<typeof getUser>>(null)
+
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUser(getUser())
+  }, [])
+
+  const isAdmin = user?.role === "admin"
 
   function handleLogout() {
     clearAuth()
