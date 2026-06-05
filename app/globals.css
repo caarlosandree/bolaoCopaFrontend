@@ -5,6 +5,15 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    /* NINA Brand Palette */
+    --color-nina-wine: #6D0E2B;
+    --color-nina-wine-dark: #3D0618;
+    --color-nina-red: #D91E4E;
+    --color-nina-orange: #FF6B00;
+    --color-nina-purple: #9C27B0;
+    --color-nina-pink: #E91E63;
+    --color-nina-green: #25D366;
+
     --font-heading: var(--font-sans);
     --font-sans: var(--font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
