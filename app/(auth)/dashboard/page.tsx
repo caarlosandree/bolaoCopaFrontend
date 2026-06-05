@@ -234,171 +234,184 @@ export default function DashboardPage() {
                   const minutesLeft = diffMs / 60000
                   const warning = minutesLeft > 0 && minutesLeft <= 15
 
+                  const cardStyle =
+                    !locked && match.status === "scheduled"
+                      ? {
+                          backgroundImage:
+                            "repeating-linear-gradient(160deg, transparent, transparent 24px, rgba(26,122,58,0.04) 24px, rgba(26,122,58,0.04) 48px)",
+                        }
+                      : {}
+
                   return (
                     <Card
                       key={match.id}
-                      className={`relative overflow-hidden border bg-gradient-to-r from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-md transition-all duration-300 ${
-                        locked
-                          ? "border-slate-800/40 opacity-95"
-                          : warning
-                            ? "animate-pulse-slow border-amber-500/40 shadow-lg shadow-amber-500/5"
-                            : "border-slate-800/80 hover:border-nina-red/40 hover:shadow-xl hover:shadow-nina-red/5"
+                      style={cardStyle}
+                      className={`relative overflow-hidden border bg-slate-900/80 backdrop-blur-md transition-all duration-300 ${
+                        match.status === "finished"
+                          ? "border-slate-800/40"
+                          : locked
+                            ? "border-slate-800/40 opacity-90"
+                            : warning
+                              ? "animate-pulse-slow border-amber-500/40 shadow-lg shadow-amber-500/5"
+                              : "border-green-900/60 hover:border-green-700/60 hover:shadow-xl hover:shadow-green-900/10"
                       }`}
                     >
-                      {/* Linha indicadora premium no topo do card */}
+                      {/* Borda superior colorida por estado */}
                       <div
-                        className={`absolute top-0 left-0 h-[3px] w-full transition-colors duration-300 ${
+                        className={`absolute top-0 left-0 h-1 w-full transition-colors duration-300 ${
                           match.status === "finished"
-                            ? "bg-slate-800"
+                            ? "bg-slate-700/60"
                             : locked
-                              ? "bg-red-500/40"
+                              ? "bg-red-800/50"
                               : warning
                                 ? "animate-pulse bg-gradient-to-r from-amber-500 to-orange-500"
-                                : "bg-gradient-to-r from-nina-red to-nina-orange"
+                                : "bg-gradient-to-r from-green-700 to-green-500"
                         }`}
                       />
 
-                      <CardContent className="flex flex-col justify-between gap-4 p-4 md:flex-row md:items-center md:gap-6 md:p-6">
-                        {/* Data / Status do Jogo */}
-                        <div className="flex flex-row items-center justify-between gap-2 border-b border-slate-800/50 pb-3 md:min-w-[150px] md:flex-col md:items-start md:justify-center md:border-b-0 md:pb-0">
-                          <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
-                            <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                      <CardContent className="flex flex-col gap-4 p-4 pt-5">
+                        {/* Zona 1: Meta-info */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                            <Calendar className="h-3 w-3" />
                             {formatMatchDate(match.match_time)}
                           </div>
 
                           {match.status === "finished" ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-800/80 bg-slate-900/60 px-3 py-1 text-[11px] font-extrabold text-slate-300">
-                              <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-800/80 bg-slate-900/60 px-2.5 py-0.5 text-[10px] font-extrabold text-slate-400">
+                              <CheckCircle2 className="h-3 w-3" />
                               Finalizado
                             </span>
                           ) : locked ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-red-900/20 bg-red-950/30 px-3 py-1 text-[11px] font-extrabold text-red-400">
-                              <Lock className="h-3.5 w-3.5 text-red-500" />
+                            <span className="inline-flex items-center gap-1 rounded-full border border-red-900/30 bg-red-950/40 px-2.5 py-0.5 text-[10px] font-extrabold text-red-400">
+                              <Lock className="h-3 w-3" />
                               Bloqueado
                             </span>
                           ) : (
                             <span
-                              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold ${
+                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold ${
                                 warning
                                   ? "animate-pulse border-amber-900/40 bg-amber-950/40 text-amber-400"
-                                  : "border-nina-wine/30 bg-nina-wine/20 text-nina-red"
+                                  : "border-green-900/40 bg-green-950/30 text-green-400"
                               }`}
                             >
-                              <Clock className="h-3.5 w-3.5" />
+                              <Clock className="h-3 w-3" />
                               Fecha em {formatCountdown(match.match_time)}
                             </span>
                           )}
                         </div>
 
-                        {/* Placar centralizado */}
-                        <div className="flex w-full flex-1 items-center justify-between gap-3 py-1 md:gap-6">
+                        {/* Zona 2: Confronto — bandeiras + inputs */}
+                        <div className="flex items-center justify-between gap-2">
                           {/* Mandante */}
-                          <div className="flex min-w-0 flex-1 items-center justify-end gap-2.5">
-                            <span className="truncate text-right text-sm font-extrabold text-white md:text-base">
-                              {match.home_team}
-                            </span>
+                          <div className="flex min-w-0 flex-1 flex-col items-center gap-2">
                             <TeamFlag
                               teamName={match.home_team}
-                              className="h-8 w-8 border border-white/10 shadow-lg md:h-10 md:w-10"
+                              className="h-12 w-12 border border-white/10 shadow-lg"
                             />
+                            <span className="w-full truncate text-center text-xs font-extrabold text-white">
+                              {match.home_team}
+                            </span>
                           </div>
 
-                          {/* Inputs de Gols */}
-                          <div className="flex flex-shrink-0 items-center gap-1.5 rounded-2xl border border-slate-800/80 bg-slate-950/60 p-1.5 shadow-inner">
-                            <Input
-                              type="text"
-                              maxLength={2}
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              disabled={locked}
-                              value={
-                                match.status === "finished"
-                                  ? String(match.home_score ?? "-")
-                                  : g.homeGuess
-                              }
-                              onChange={(e) =>
-                                handleInputChange(
-                                  match.id,
-                                  "homeGuess",
-                                  e.target.value
-                                )
-                              }
-                              className={`h-9 w-9 rounded-xl border-0 p-0 text-center text-base font-black transition-all md:h-11 md:w-11 md:text-lg ${
-                                locked
-                                  ? "cursor-not-allowed bg-transparent text-slate-400 opacity-60"
-                                  : "hover:bg-slate-850 bg-slate-900 text-white focus:bg-slate-900 focus:ring-1 focus:ring-nina-red/50"
-                              }`}
-                              placeholder="-"
-                            />
-                            <span className="px-0.5 text-xs font-black text-slate-600 select-none md:text-sm">
-                              x
-                            </span>
-                            <Input
-                              type="text"
-                              maxLength={2}
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              disabled={locked}
-                              value={
-                                match.status === "finished"
-                                  ? String(match.away_score ?? "-")
-                                  : g.awayGuess
-                              }
-                              onChange={(e) =>
-                                handleInputChange(
-                                  match.id,
-                                  "awayGuess",
-                                  e.target.value
-                                )
-                              }
-                              className={`h-9 w-9 rounded-xl border-0 p-0 text-center text-base font-black transition-all md:h-11 md:w-11 md:text-lg ${
-                                locked
-                                  ? "cursor-not-allowed bg-transparent text-slate-400 opacity-60"
-                                  : "hover:bg-slate-850 bg-slate-900 text-white focus:bg-slate-900 focus:ring-1 focus:ring-nina-red/50"
-                              }`}
-                              placeholder="-"
-                            />
+                          {/* Inputs */}
+                          <div className="flex flex-shrink-0 flex-col items-center gap-1">
+                            <div className="flex items-center gap-1.5 rounded-2xl border border-slate-800/80 bg-slate-950/70 p-1.5 shadow-inner">
+                              <Input
+                                type="text"
+                                maxLength={2}
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                disabled={locked}
+                                value={
+                                  match.status === "finished"
+                                    ? String(match.home_score ?? "-")
+                                    : g.homeGuess
+                                }
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    match.id,
+                                    "homeGuess",
+                                    e.target.value
+                                  )
+                                }
+                                className={`h-12 w-12 rounded-xl border-0 p-0 text-center text-xl font-black transition-all ${
+                                  locked
+                                    ? "cursor-not-allowed bg-transparent text-slate-500 opacity-60"
+                                    : "bg-slate-900 text-white focus:ring-1 focus:ring-green-600/50"
+                                }`}
+                                placeholder="-"
+                              />
+                              <span className="text-sm font-black text-slate-600 select-none">
+                                ×
+                              </span>
+                              <Input
+                                type="text"
+                                maxLength={2}
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                disabled={locked}
+                                value={
+                                  match.status === "finished"
+                                    ? String(match.away_score ?? "-")
+                                    : g.awayGuess
+                                }
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    match.id,
+                                    "awayGuess",
+                                    e.target.value
+                                  )
+                                }
+                                className={`h-12 w-12 rounded-xl border-0 p-0 text-center text-xl font-black transition-all ${
+                                  locked
+                                    ? "cursor-not-allowed bg-transparent text-slate-500 opacity-60"
+                                    : "bg-slate-900 text-white focus:ring-1 focus:ring-green-600/50"
+                                }`}
+                                placeholder="-"
+                              />
+                            </div>
                           </div>
 
                           {/* Visitante */}
-                          <div className="flex min-w-0 flex-1 items-center justify-start gap-2.5">
+                          <div className="flex min-w-0 flex-1 flex-col items-center gap-2">
                             <TeamFlag
                               teamName={match.away_team}
-                              className="h-8 w-8 border border-white/10 shadow-lg md:h-10 md:w-10"
+                              className="h-12 w-12 border border-white/10 shadow-lg"
                             />
-                            <span className="truncate text-left text-sm font-extrabold text-white md:text-base">
+                            <span className="w-full truncate text-center text-xs font-extrabold text-white">
                               {match.away_team}
                             </span>
                           </div>
                         </div>
 
-                        {/* Ação de Salvar / Pontuação obtida */}
-                        <div className="border-slate-850 mt-2 flex w-full items-center justify-center border-t pt-3 md:mt-0 md:w-auto md:min-w-[130px] md:border-t-0 md:pt-0">
+                        {/* Zona 3: Status / Ação */}
+                        <div className="border-t border-slate-800/60 pt-3">
                           {match.status === "finished" ? (
-                            <div className="w-full rounded-xl border border-nina-wine/30 bg-gradient-to-br from-nina-wine/20 to-nina-wine/5 px-4 py-1.5 text-center">
+                            <div className="w-full rounded-xl border border-nina-wine/30 bg-gradient-to-br from-nina-wine/20 to-nina-wine/5 px-4 py-2 text-center">
                               {match.user_guess?.points_earned !== undefined ? (
                                 <>
-                                  <span className="mb-0.5 block text-[9px] leading-none font-black tracking-wider text-nina-orange uppercase">
-                                    Pontos
+                                  <span className="mb-0.5 block text-[9px] font-black tracking-wider text-nina-orange uppercase">
+                                    Pontos ganhos
                                   </span>
-                                  <span className="text-base font-black text-white">
+                                  <span className="text-lg font-black text-white">
                                     +{match.user_guess.points_earned} pts
                                   </span>
                                 </>
                               ) : (
-                                <span className="text-xs font-bold text-slate-400">
-                                  Sem palpite
+                                <span className="text-xs font-bold text-slate-500">
+                                  Sem palpite registrado
                                 </span>
                               )}
                             </div>
                           ) : locked ? (
-                            <div className="w-full rounded-xl border border-slate-800/40 bg-slate-950/40 px-4 py-2 text-center text-slate-400">
-                              <span className="mb-0.5 block text-[9px] leading-none font-black tracking-wider text-slate-500 uppercase">
-                                Fechado
+                            <div className="w-full rounded-xl border border-slate-800/40 bg-slate-950/40 px-4 py-2 text-center">
+                              <span className="mb-0.5 block text-[9px] font-black tracking-wider text-slate-500 uppercase">
+                                Palpite registrado
                               </span>
                               <span className="text-xs font-bold text-slate-300">
-                                {g.homeGuess || g.awayGuess
-                                  ? `Seu palpite: ${g.homeGuess || 0}x${g.awayGuess || 0}`
+                                {g.homeGuess !== "" || g.awayGuess !== ""
+                                  ? `${g.homeGuess || 0} × ${g.awayGuess || 0}`
                                   : "Sem palpite"}
                               </span>
                             </div>
@@ -411,10 +424,10 @@ export default function DashboardPage() {
                                 !g.homeGuess ||
                                 !g.awayGuess
                               }
-                              className={`flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-bold transition-all ${
+                              className={`flex h-10 w-full items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-bold transition-all ${
                                 g.saved
-                                  ? "cursor-default border border-slate-800/80 bg-slate-900/60 text-slate-400 hover:bg-slate-900/60"
-                                  : "bg-gradient-to-r from-nina-red to-nina-orange text-white shadow-lg shadow-nina-red/10 hover:opacity-90 active:scale-95"
+                                  ? "cursor-default border border-slate-800/80 bg-slate-900/60 text-slate-400"
+                                  : "cursor-pointer bg-gradient-to-r from-nina-red to-nina-orange text-white shadow-lg shadow-nina-red/10 hover:opacity-90 active:scale-95"
                               }`}
                             >
                               {g.loading ? (
