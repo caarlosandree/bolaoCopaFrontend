@@ -42,7 +42,50 @@ export type Match = {
   match_time: string
   group_name?: string | null
   venue?: string | null
+  thesportsdb_event_id?: string | null
+  thesportsdb_home_team_id?: string | null
+  thesportsdb_away_team_id?: string | null
+  odds_api_event_id?: string | null
+  api_football_fixture_id?: string | null
   user_guess?: UserGuess | null
+}
+
+export type SourceStatus = {
+  source: string
+  section: string
+  status: "success" | "partial" | "failed" | "unavailable"
+  message?: string
+  synced_at?: string
+}
+
+export type MatchDetailsAvailability = {
+  odds: boolean
+  predictions: boolean
+  form: boolean
+  h2h: boolean
+  lineups: boolean
+  statistics: boolean
+  injuries: boolean
+  events: boolean
+  media: boolean
+}
+
+export type MatchDetails = {
+  match_id: number
+  availability: MatchDetailsAvailability
+  odds: unknown | null
+  predictions: unknown | null
+  recent_form: unknown | null
+  head_to_head: unknown | null
+  lineups: unknown | null
+  statistics: unknown | null
+  injuries: unknown | null
+  events: unknown | null
+  media: unknown | null
+  source_status: SourceStatus[]
+  last_synced_at: string | null
+  lineups_synced_at: string | null
+  updated_at: string | null
 }
 
 export type ActiveRoundResponse = {

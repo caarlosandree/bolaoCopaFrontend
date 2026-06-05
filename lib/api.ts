@@ -3,6 +3,7 @@ import type {
   ActiveRoundResponse,
   AdminMatch,
   AuthResponse,
+  MatchDetails,
   RankingEntry,
   SyncResultsResult,
   SyncScheduleResult,
@@ -65,6 +66,10 @@ export function login(email: string, password: string) {
 // Rodada ativa
 export function getActiveRound() {
   return request<ActiveRoundResponse>("/api/rounds/active")
+}
+
+export function getMatchDetails(matchId: number) {
+  return request<MatchDetails>(`/api/matches/${matchId}/details`)
 }
 
 // Palpites
