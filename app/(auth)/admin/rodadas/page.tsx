@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,24 +48,29 @@ function formatDate(iso: string | Date | null): string {
 }
 
 export default function RodasPage() {
-  const [rounds, setRounds] = useState<RoundSummary[]>([])
-  const [loading, setLoading] = useState(true)
+  const [rounds, setRounds] = useState<RoundSummary[] | null>(null)
   const [activating, setActivating] = useState<number | null>(null)
 
-  const fetchRounds = useCallback(async () => {
-    try {
-      const data = await getRounds()
-      setRounds(data)
-    } catch (error) {
-      console.error("Erro ao buscar rodadas:", error)
-    } finally {
-      setLoading(false)
-    }
+  const [refreshToken, setRefreshToken] = useState(0)
+  const refreshRef = useRef(() => setRefreshToken((n) => n + 1))
+  const fetchRounds = useCallback(() => {
+    setRounds(null)
+    refreshRef.current()
   }, [])
 
   useEffect(() => {
-    fetchRounds()
-  }, [fetchRounds])
+    let cancelled = false
+    getRounds()
+      .then((data) => {
+        if (!cancelled) setRounds(data)
+      })
+      .catch((error) => console.error("Erro ao buscar rodadas:", error))
+    return () => {
+      cancelled = true
+    }
+  }, [refreshToken])
+
+  const loading = rounds === null
 
   async function handleActivate(roundId: number) {
     setActivating(roundId)
@@ -79,7 +84,7 @@ export default function RodasPage() {
     }
   }
 
-  const activeRound = rounds.find((r) => r.status === "active")
+  const activeRound = rounds?.find((r) => r.status === "active")
 
   return (
     <div className="mx-auto max-w-3xl animate-in space-y-8 duration-300 fade-in">
@@ -140,7 +145,7 @@ export default function RodasPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
-            {rounds.map((round) => {
+            {(rounds ?? []).map((round) => {
               const cfg = STATUS_CONFIG[round.status]
               return (
                 <Card
@@ -217,7 +222,7 @@ export default function RodasPage() {
           </div>
         )}
 
-        {!loading && rounds.length === 0 && (
+        {!loading && (rounds ?? []).length === 0 && (
           <div className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-10 text-center shadow-inner">
             <p className="text-sm text-slate-400">
               Nenhuma rodada cadastrada ainda. Sincronize o calendário em{" "}

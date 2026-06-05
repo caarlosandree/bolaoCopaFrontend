@@ -234,9 +234,7 @@ function ConnectorLayer({
 
       if (topMatch) {
         const topY = cardY(fromDepth, topSlot) + CARD_H / 2
-        paths.push(
-          `M ${fromX + CARD_W} ${topY} H ${midX} V ${parentY}`
-        )
+        paths.push(`M ${fromX + CARD_W} ${topY} H ${midX} V ${parentY}`)
       }
 
       if (botMatch) {

@@ -588,15 +588,6 @@ function InfoPill({
   )
 }
 
-function RawPreview({ value }: { value: unknown }) {
-  if (!value) return <Unavailable />
-  return (
-    <pre className="max-h-48 overflow-auto rounded-lg border border-slate-800/60 bg-slate-900/60 p-2 text-[10px] leading-relaxed whitespace-pre-wrap text-slate-400">
-      {JSON.stringify(value, null, 2)}
-    </pre>
-  )
-}
-
 function Unavailable({ detail }: { detail?: string | null }) {
   return (
     <div className="flex items-start gap-2 rounded-lg border border-slate-800/60 bg-slate-900/50 px-3 py-2 text-xs font-bold text-slate-500">
