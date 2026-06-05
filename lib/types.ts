@@ -6,6 +6,7 @@ export type User = {
   email: string
   role: UserRole
   total_points: number
+  avatar_url: string | null
   created_at: string
 }
 
@@ -53,6 +54,7 @@ export type RankingEntry = {
   name: string
   email: string
   total_points: number
+  avatar_url: string | null
 }
 
 export type AdminMatch = {
