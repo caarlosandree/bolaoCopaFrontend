@@ -1,16 +1,17 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
   Clock,
-  Save,
   AlertCircle,
+  AlertTriangle,
   Calendar,
   CheckCircle2,
   Lock,
+  RotateCcw,
   Target,
   Trophy,
 } from "lucide-react"
@@ -26,6 +27,7 @@ type GuessState = {
   awayGuess: string
   saved: boolean
   loading: boolean
+  error: string | null
 }
 
 export default function DashboardPage() {
@@ -35,6 +37,9 @@ export default function DashboardPage() {
   const [guesses, setGuesses] = useState<Record<number, GuessState>>({})
   const [pageLoading, setPageLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>(
+    {}
+  )
 
   async function loadRound() {
     try {
@@ -50,6 +55,7 @@ export default function DashboardPage() {
             awayGuess: String(m.user_guess.away_guess),
             saved: true,
             loading: false,
+            error: null,
           }
         }
       }
@@ -76,48 +82,83 @@ export default function DashboardPage() {
     return () => clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    const timers = debounceTimers.current
+    return () => Object.values(timers).forEach(clearTimeout)
+  }, [])
+
   function handleInputChange(
     matchId: number,
     field: "homeGuess" | "awayGuess",
     value: string
   ) {
     const clean = value.replace(/\D/g, "")
+    const current = guesses[matchId] ?? {
+      homeGuess: "",
+      awayGuess: "",
+      saved: false,
+      loading: false,
+      error: null,
+    }
+    const newHome = field === "homeGuess" ? clean : current.homeGuess
+    const newAway = field === "awayGuess" ? clean : current.awayGuess
+
     setGuesses((prev) => ({
       ...prev,
       [matchId]: {
-        ...(prev[matchId] ?? {
-          homeGuess: "",
-          awayGuess: "",
-          saved: false,
-          loading: false,
-        }),
+        ...current,
+        ...prev[matchId],
         [field]: clean,
         saved: false,
+        error: null,
       },
     }))
+
+    if (debounceTimers.current[matchId]) {
+      clearTimeout(debounceTimers.current[matchId])
+    }
+
+    if (newHome !== "" && newAway !== "") {
+      debounceTimers.current[matchId] = setTimeout(() => {
+        autoSave(matchId, Number(newHome), Number(newAway))
+      }, 800)
+    }
+  }
+
+  async function autoSave(matchId: number, home: number, away: number) {
+    setGuesses((prev) => ({
+      ...prev,
+      [matchId]: { ...prev[matchId], loading: true, error: null },
+    }))
+    try {
+      await saveGuess(matchId, home, away)
+      setGuesses((prev) => ({
+        ...prev,
+        [matchId]: {
+          ...prev[matchId],
+          loading: false,
+          saved: true,
+          error: null,
+        },
+      }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao salvar"
+      setGuesses((prev) => ({
+        ...prev,
+        [matchId]: {
+          ...prev[matchId],
+          loading: false,
+          saved: false,
+          error: message,
+        },
+      }))
+    }
   }
 
   async function handleSave(matchId: number) {
     const g = guesses[matchId]
     if (!g || g.homeGuess === "" || g.awayGuess === "") return
-
-    setGuesses((prev) => ({
-      ...prev,
-      [matchId]: { ...prev[matchId], loading: true },
-    }))
-    try {
-      await saveGuess(matchId, Number(g.homeGuess), Number(g.awayGuess))
-      setGuesses((prev) => ({
-        ...prev,
-        [matchId]: { ...prev[matchId], loading: false, saved: true },
-      }))
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao salvar palpite")
-      setGuesses((prev) => ({
-        ...prev,
-        [matchId]: { ...prev[matchId], loading: false },
-      }))
-    }
+    await autoSave(matchId, Number(g.homeGuess), Number(g.awayGuess))
   }
 
   async function handleConfirmAll() {
@@ -131,7 +172,12 @@ export default function DashboardPage() {
         g.awayGuess !== ""
       )
     })
-    await Promise.all(pending.map((m) => handleSave(m.id)))
+    await Promise.all(
+      pending.map((m) => {
+        const g = guesses[m.id]
+        return autoSave(m.id, Number(g.homeGuess), Number(g.awayGuess))
+      })
+    )
   }
 
   function isLocked(match: Match): boolean {
@@ -385,7 +431,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        {/* Zona 3: Status / Ação */}
+                        {/* Zona 3: Status / Auto-save */}
                         <div className="border-t border-slate-800/60 pt-3">
                           {match.status === "finished" ? (
                             <div className="w-full rounded-xl border border-nina-wine/30 bg-gradient-to-br from-nina-wine/20 to-nina-wine/5 px-4 py-2 text-center">
@@ -415,35 +461,36 @@ export default function DashboardPage() {
                                   : "Sem palpite"}
                               </span>
                             </div>
+                          ) : g.loading ? (
+                            <div className="flex items-center justify-center gap-2 py-1.5 text-xs text-slate-400">
+                              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                              Salvando...
+                            </div>
+                          ) : g.error ? (
+                            <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-900/30 bg-amber-950/20 px-3 py-2">
+                              <div className="flex items-center gap-1.5 text-xs text-amber-400">
+                                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                                <span className="truncate">{g.error}</span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleSave(match.id)}
+                                className="h-6 cursor-pointer gap-1 px-2 text-[10px] font-bold text-amber-400 hover:bg-amber-950/40 hover:text-amber-300"
+                              >
+                                <RotateCcw className="h-3 w-3" />
+                                Tentar
+                              </Button>
+                            </div>
+                          ) : g.saved ? (
+                            <div className="flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold text-green-400">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Salvo
+                            </div>
                           ) : (
-                            <Button
-                              onClick={() => handleSave(match.id)}
-                              disabled={
-                                g.saved ||
-                                g.loading ||
-                                !g.homeGuess ||
-                                !g.awayGuess
-                              }
-                              className={`flex h-10 w-full items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-bold transition-all ${
-                                g.saved
-                                  ? "cursor-default border border-slate-800/80 bg-slate-900/60 text-slate-400"
-                                  : "cursor-pointer bg-gradient-to-r from-nina-red to-nina-orange text-white shadow-lg shadow-nina-red/10 hover:opacity-90 active:scale-95"
-                              }`}
-                            >
-                              {g.loading ? (
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                              ) : g.saved ? (
-                                <>
-                                  <CheckCircle2 className="h-4 w-4 text-nina-green" />
-                                  Salvo
-                                </>
-                              ) : (
-                                <>
-                                  <Save className="h-4 w-4" />
-                                  Salvar
-                                </>
-                              )}
-                            </Button>
+                            <div className="py-1.5 text-center text-[11px] text-slate-600">
+                              Preencha o placar para salvar automaticamente
+                            </div>
                           )}
                         </div>
                       </CardContent>
