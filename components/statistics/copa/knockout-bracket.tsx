@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { Loader2, Trophy } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getBracket } from "@/lib/api"
@@ -14,7 +14,7 @@ const CARD_H = 52
 const COL_GAP = 48
 const COL_W = CARD_W + COL_GAP
 const SLOT_H = 80
-const CENTER_GAP = 80 // espaço extra entre os dois lados do bracket
+const CENTER_GAP = 80
 
 const ROUND_LABELS: Record<string, string> = {
   r32: "Rodada de 32",
@@ -25,22 +25,29 @@ const ROUND_LABELS: Record<string, string> = {
   third: "3º Lugar",
 }
 
-// Rounds do lado esquerdo (índice 0 = mais à esquerda)
 const LEFT_ROUNDS = ["r32", "r16", "qf", "sf"] as const
-// Rounds do lado direito (espelho)
 const RIGHT_ROUNDS = ["sf", "qf", "r16", "r32"] as const
+
+const ROUND_DEPTH: Record<string, number> = {
+  r32: 0,
+  r16: 1,
+  qf: 2,
+  sf: 3,
+  final: 3,
+  third: 3,
+}
 
 type RoundKey = keyof BracketRounds
 
 // ==========================================
 // Geometry helpers
 // ==========================================
-function slotH(roundIndex: number) {
-  return SLOT_H * Math.pow(2, roundIndex)
+function slotH(depth: number) {
+  return SLOT_H * Math.pow(2, depth)
 }
 
-function cardY(roundIndex: number, slot: number) {
-  const sh = slotH(roundIndex)
+function cardY(depth: number, slot: number) {
+  const sh = slotH(depth)
   return slot * sh + (sh - CARD_H) / 2
 }
 
@@ -49,12 +56,10 @@ function leftColX(colIndex: number) {
 }
 
 function totalHeight() {
-  // R32 com até 8 matches por lado = 8 slots de SLOT_H
-  return 8 * SLOT_H
+  return 10 * SLOT_H
 }
 
 function totalWidth() {
-  // 4 colunas esquerda + center (CARD_W + CENTER_GAP) + 4 colunas direita
   const halfWidth = LEFT_ROUNDS.length * COL_W
   const centerWidth = CARD_W + CENTER_GAP
   return halfWidth * 2 + centerWidth
@@ -65,7 +70,6 @@ function centerX() {
 }
 
 function rightColX(colIndex: number) {
-  // col 0 = SF (mais próximo do centro), col 3 = R32 (mais à direita)
   return centerX() + CARD_W / 2 + CENTER_GAP / 2 + colIndex * COL_W
 }
 
@@ -113,7 +117,6 @@ function MatchCardSVG({
 
   return (
     <g>
-      {/* Card background */}
       <rect
         x={x}
         y={y}
@@ -125,7 +128,6 @@ function MatchCardSVG({
         strokeWidth={isOngoing ? 1.5 : 1}
       />
 
-      {/* Ongoing pulse border */}
       {isOngoing && (
         <rect
           x={x}
@@ -140,7 +142,6 @@ function MatchCardSVG({
         />
       )}
 
-      {/* Divider between teams */}
       <line
         x1={x + 1}
         y1={y + CARD_H / 2}
@@ -150,7 +151,6 @@ function MatchCardSVG({
         strokeWidth={1}
       />
 
-      {/* Home team row */}
       <text
         x={x + 10}
         y={y + CARD_H / 4 + 4}
@@ -175,7 +175,6 @@ function MatchCardSVG({
         </text>
       )}
 
-      {/* Away team row */}
       <text
         x={x + 10}
         y={y + (3 * CARD_H) / 4 + 4}
@@ -224,24 +223,25 @@ function Connectors({
     const toKey = roundKeys[colIdx + 1] as RoundKey
     const fromMatches = rounds[fromKey] ?? []
     const toMatches = rounds[toKey] ?? []
+    const fromDepth = ROUND_DEPTH[fromKey] ?? 0
+    const toDepth = ROUND_DEPTH[toKey] ?? 0
 
     const fromX = getX(colIdx)
     const toX = getX(colIdx + 1)
-    const midX = fromX + CARD_W + COL_GAP / 2
 
     for (let i = 0; i < toMatches.length; i++) {
       const topSlot = i * 2
       const botSlot = i * 2 + 1
 
-      const topMatch = fromMatches[topSlot]
-      const botMatch = fromMatches[botSlot]
+      const topMatch = fromMatches.find((m) => m.slot === topSlot)
+      const botMatch = fromMatches.find((m) => m.slot === botSlot)
       const parentMatch = toMatches[i]
       if (!parentMatch) continue
 
-      const parentY = cardY(colIdx + 1, i) + CARD_H / 2
+      const parentY = cardY(toDepth, i) + CARD_H / 2
 
-      if (topMatch !== undefined) {
-        const topY = cardY(colIdx, topSlot) + CARD_H / 2
+      if (topMatch) {
+        const topY = cardY(fromDepth, topSlot) + CARD_H / 2
         const fromRight = side === "left" ? fromX + CARD_W : fromX
         const dir = side === "left" ? 1 : -1
 
@@ -250,8 +250,8 @@ function Connectors({
         )
       }
 
-      if (botMatch !== undefined) {
-        const botY = cardY(colIdx, botSlot) + CARD_H / 2
+      if (botMatch) {
+        const botY = cardY(fromDepth, botSlot) + CARD_H / 2
         const fromRight = side === "left" ? fromX + CARD_W : fromX
         const dir = side === "left" ? 1 : -1
 
@@ -260,12 +260,11 @@ function Connectors({
         )
       }
 
-      // Linha para o card pai
+      const junctionX =
+        side === "left"
+          ? getX(colIdx) + CARD_W + COL_GAP / 2
+          : getX(colIdx) - COL_GAP / 2
       const toLeft = side === "left" ? toX : toX + CARD_W
-      const dir = side === "left" ? 1 : -1
-      const junctionX = side === "left"
-        ? (getX(colIdx) + CARD_W + COL_GAP / 2)
-        : (getX(colIdx) - COL_GAP / 2)
 
       paths.push(`M ${junctionX} ${parentY} H ${toLeft}`)
     }
@@ -309,12 +308,106 @@ function RoundLabel({
 }
 
 // ==========================================
+// Bracket template generator
+// ==========================================
+function generateKnockoutTemplate(): BracketRounds {
+  const r32Matches: BracketMatch[] = [
+    // Lado superior do bracket (slots 0-7)
+    { id: "r32-0", home: { name: "1º Grupo A", badge: "", score: null }, away: { name: "2º Grupo B", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
+    { id: "r32-1", home: { name: "1º Grupo C", badge: "", score: null }, away: { name: "2º Grupo D", badge: "", score: null }, status: "scheduled", match_time: "", slot: 1 },
+    { id: "r32-2", home: { name: "1º Grupo E", badge: "", score: null }, away: { name: "2º Grupo F", badge: "", score: null }, status: "scheduled", match_time: "", slot: 2 },
+    { id: "r32-3", home: { name: "1º Grupo G", badge: "", score: null }, away: { name: "2º Grupo H", badge: "", score: null }, status: "scheduled", match_time: "", slot: 3 },
+    { id: "r32-4", home: { name: "1º Grupo I", badge: "", score: null }, away: { name: "2º Grupo J", badge: "", score: null }, status: "scheduled", match_time: "", slot: 4 },
+    { id: "r32-5", home: { name: "1º Grupo K", badge: "", score: null }, away: { name: "2º Grupo L", badge: "", score: null }, status: "scheduled", match_time: "", slot: 5 },
+    { id: "r32-6", home: { name: "3º Melhor 1", badge: "", score: null }, away: { name: "3º Melhor 2", badge: "", score: null }, status: "scheduled", match_time: "", slot: 6 },
+    { id: "r32-7", home: { name: "3º Melhor 3", badge: "", score: null }, away: { name: "3º Melhor 4", badge: "", score: null }, status: "scheduled", match_time: "", slot: 7 },
+    // Lado inferior do bracket (slots 8-15)
+    { id: "r32-8", home: { name: "1º Grupo B", badge: "", score: null }, away: { name: "2º Grupo A", badge: "", score: null }, status: "scheduled", match_time: "", slot: 8 },
+    { id: "r32-9", home: { name: "1º Grupo D", badge: "", score: null }, away: { name: "2º Grupo C", badge: "", score: null }, status: "scheduled", match_time: "", slot: 9 },
+    { id: "r32-10", home: { name: "1º Grupo F", badge: "", score: null }, away: { name: "2º Grupo E", badge: "", score: null }, status: "scheduled", match_time: "", slot: 10 },
+    { id: "r32-11", home: { name: "1º Grupo H", badge: "", score: null }, away: { name: "2º Grupo G", badge: "", score: null }, status: "scheduled", match_time: "", slot: 11 },
+    { id: "r32-12", home: { name: "1º Grupo J", badge: "", score: null }, away: { name: "2º Grupo I", badge: "", score: null }, status: "scheduled", match_time: "", slot: 12 },
+    { id: "r32-13", home: { name: "1º Grupo L", badge: "", score: null }, away: { name: "2º Grupo K", badge: "", score: null }, status: "scheduled", match_time: "", slot: 13 },
+    { id: "r32-14", home: { name: "3º Melhor 5", badge: "", score: null }, away: { name: "3º Melhor 6", badge: "", score: null }, status: "scheduled", match_time: "", slot: 14 },
+    { id: "r32-15", home: { name: "3º Melhor 7", badge: "", score: null }, away: { name: "3º Melhor 8", badge: "", score: null }, status: "scheduled", match_time: "", slot: 15 },
+  ]
+
+  const r16Matches: BracketMatch[] = [
+    { id: "r16-0", home: { name: "Vencedor R32-0", badge: "", score: null }, away: { name: "Vencedor R32-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
+    { id: "r16-1", home: { name: "Vencedor R32-2", badge: "", score: null }, away: { name: "Vencedor R32-3", badge: "", score: null }, status: "scheduled", match_time: "", slot: 1 },
+    { id: "r16-2", home: { name: "Vencedor R32-4", badge: "", score: null }, away: { name: "Vencedor R32-5", badge: "", score: null }, status: "scheduled", match_time: "", slot: 2 },
+    { id: "r16-3", home: { name: "Vencedor R32-6", badge: "", score: null }, away: { name: "Vencedor R32-7", badge: "", score: null }, status: "scheduled", match_time: "", slot: 3 },
+    { id: "r16-4", home: { name: "Vencedor R32-8", badge: "", score: null }, away: { name: "Vencedor R32-9", badge: "", score: null }, status: "scheduled", match_time: "", slot: 4 },
+    { id: "r16-5", home: { name: "Vencedor R32-10", badge: "", score: null }, away: { name: "Vencedor R32-11", badge: "", score: null }, status: "scheduled", match_time: "", slot: 5 },
+    { id: "r16-6", home: { name: "Vencedor R32-12", badge: "", score: null }, away: { name: "Vencedor R32-13", badge: "", score: null }, status: "scheduled", match_time: "", slot: 6 },
+    { id: "r16-7", home: { name: "Vencedor R32-14", badge: "", score: null }, away: { name: "Vencedor R32-15", badge: "", score: null }, status: "scheduled", match_time: "", slot: 7 },
+  ]
+
+  const qfMatches: BracketMatch[] = [
+    { id: "qf-0", home: { name: "Vencedor R16-0", badge: "", score: null }, away: { name: "Vencedor R16-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
+    { id: "qf-1", home: { name: "Vencedor R16-2", badge: "", score: null }, away: { name: "Vencedor R16-3", badge: "", score: null }, status: "scheduled", match_time: "", slot: 1 },
+    { id: "qf-2", home: { name: "Vencedor R16-4", badge: "", score: null }, away: { name: "Vencedor R16-5", badge: "", score: null }, status: "scheduled", match_time: "", slot: 2 },
+    { id: "qf-3", home: { name: "Vencedor R16-6", badge: "", score: null }, away: { name: "Vencedor R16-7", badge: "", score: null }, status: "scheduled", match_time: "", slot: 3 },
+  ]
+
+  const sfMatches: BracketMatch[] = [
+    { id: "sf-0", home: { name: "Vencedor QF-0", badge: "", score: null }, away: { name: "Vencedor QF-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
+    { id: "sf-1", home: { name: "Vencedor QF-2", badge: "", score: null }, away: { name: "Vencedor QF-3", badge: "", score: null }, status: "scheduled", match_time: "", slot: 1 },
+  ]
+
+  const finalMatch: BracketMatch[] = [
+    { id: "final", home: { name: "Vencedor SF-0", badge: "", score: null }, away: { name: "Vencedor SF-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
+  ]
+
+  const thirdMatch: BracketMatch[] = [
+    { id: "third", home: { name: "Perdedor SF-0", badge: "", score: null }, away: { name: "Perdedor SF-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
+  ]
+
+  return {
+    r32: r32Matches,
+    r16: r16Matches,
+    qf: qfMatches,
+    sf: sfMatches,
+    final: finalMatch,
+    third: thirdMatch,
+  }
+}
+
+// ==========================================
+// Split rounds into left / right halves
+// ==========================================
+function splitRounds(rounds: BracketRounds): {
+  left: BracketRounds
+  right: BracketRounds
+} {
+  const left: Partial<BracketRounds> = {}
+  const right: Partial<BracketRounds> = {}
+
+  const keys: RoundKey[] = ["r32", "r16", "qf", "sf", "final", "third"]
+
+  for (const key of keys) {
+    const matches = [...(rounds[key] ?? [])].sort((a, b) => a.slot - b.slot)
+
+    if (key === "final" || key === "third") {
+      left[key] = matches
+      right[key] = matches
+      continue
+    }
+
+    const half = Math.ceil(matches.length / 2)
+    left[key] = matches.slice(0, half).map((m, i) => ({ ...m, slot: i }))
+    right[key] = matches.slice(half).map((m, i) => ({ ...m, slot: i }))
+  }
+
+  return { left: left as BracketRounds, right: right as BracketRounds }
+}
+
+// ==========================================
 // Main bracket component
 // ==========================================
 export function KnockoutBracketSection() {
   const [data, setData] = useState<BracketRounds | null>(null)
   const [loading, setLoading] = useState(true)
-  const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
     getBracket()
@@ -331,22 +424,28 @@ export function KnockoutBracketSection() {
     )
   }
 
-  const rounds = data ?? {
-    r32: [],
-    r16: [],
-    qf: [],
-    sf: [],
-    final: [],
-    third: [],
-  }
+  const template = generateKnockoutTemplate()
+  const rounds = data ? { ...template, ...data } : template
 
-  const hasKnockout = rounds.r32.length > 0 || rounds.r16.length > 0
+  const hasRealData = data && (data.r32.length > 0 || data.r16.length > 0)
+
+  const { left: leftRounds, right: rightRounds } = splitRounds(rounds)
 
   const W = totalWidth()
-  const H = totalHeight() + 40 // espaço para labels no topo
-
-  // Offset vertical para labels
+  const H = totalHeight() + 40
   const Y_OFFSET = 28
+
+  const cx = centerX() - CARD_W / 2
+  const cy = (totalHeight() - CARD_H) / 2
+  const finalCenterY = cy + CARD_H / 2
+
+  const sfLeftConnX = leftColX(3) + CARD_W
+  const sfRightConnX = rightColX(0)
+  const midLeft = sfLeftConnX + COL_GAP / 2
+  const midRight = sfRightConnX - COL_GAP / 2
+
+  const sfLeftY = cardY(ROUND_DEPTH.sf, 0) + CARD_H / 2
+  const sfRightY = cardY(ROUND_DEPTH.sf, 0) + CARD_H / 2
 
   return (
     <Card className="border-slate-800/80 bg-slate-900/60 backdrop-blur-md">
@@ -356,177 +455,139 @@ export function KnockoutBracketSection() {
             <Trophy className="h-4 w-4 text-amber-400" />
           </div>
           <div>
-            <CardTitle className="text-sm font-black text-white">Chaveamento</CardTitle>
+            <CardTitle className="text-sm font-black text-white">
+              Chaveamento
+            </CardTitle>
             <p className="text-[10px] font-medium text-slate-400">
-              Copa do Mundo 2026 · Fase Eliminatória
+              Copa do Mundo 2026 · Fase Eliminatória{" "}
+              {!hasRealData && "(Previsão)"}
             </p>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="p-4">
-        {!hasKnockout ? (
-          <div className="flex h-32 items-center justify-center text-sm text-slate-400">
-            Fase eliminatória ainda não iniciada.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <svg
-              ref={svgRef}
-              viewBox={`0 0 ${W} ${H}`}
-              width={W}
-              height={H}
-              className="min-w-full"
-              style={{ fontFamily: "inherit" }}
-            >
-              {/* ---- Labels ---- */}
-              {LEFT_ROUNDS.map((rk, i) => (
-                <RoundLabel
-                  key={rk}
-                  x={leftColX(i)}
-                  label={ROUND_LABELS[rk]}
-                  width={CARD_W}
-                />
-              ))}
+        <div className="overflow-x-auto">
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            width={W}
+            height={H}
+            className="min-w-full"
+            style={{ fontFamily: "inherit" }}
+          >
+            {/* ---- Labels ---- */}
+            {LEFT_ROUNDS.map((rk, i) => (
               <RoundLabel
-                x={centerX() - CARD_W / 2}
-                label={ROUND_LABELS.final}
+                key={rk}
+                x={leftColX(i)}
+                label={ROUND_LABELS[rk]}
                 width={CARD_W}
               />
-              {RIGHT_ROUNDS.map((rk, i) => (
-                <RoundLabel
-                  key={`right-${rk}-${i}`}
-                  x={rightColX(i)}
-                  label={ROUND_LABELS[rk]}
-                  width={CARD_W}
-                />
-              ))}
+            ))}
+            <RoundLabel
+              x={centerX() - CARD_W / 2}
+              label={ROUND_LABELS.final}
+              width={CARD_W}
+            />
+            {RIGHT_ROUNDS.map((rk, i) => (
+              <RoundLabel
+                key={`right-${rk}-${i}`}
+                x={rightColX(i)}
+                label={ROUND_LABELS[rk]}
+                width={CARD_W}
+              />
+            ))}
 
-              <g transform={`translate(0, ${Y_OFFSET})`}>
-                {/* ---- Left side connectors ---- */}
-                <Connectors
-                  side="left"
-                  rounds={rounds}
-                  roundKeys={LEFT_ROUNDS}
-                  getX={leftColX}
-                />
+            <g transform={`translate(0, ${Y_OFFSET})`}>
+              {/* ---- Left side connectors ---- */}
+              <Connectors
+                side="left"
+                rounds={leftRounds}
+                roundKeys={LEFT_ROUNDS}
+                getX={leftColX}
+              />
 
-                {/* ---- Left side match cards ---- */}
-                {LEFT_ROUNDS.map((rk, colIdx) => {
-                  const matches = rounds[rk as RoundKey] ?? []
-                  const halfMatches = matches.slice(0, 8)
-                  return halfMatches.map((match, slot) => (
-                    <MatchCardSVG
-                      key={match.id}
-                      x={leftColX(colIdx)}
-                      y={cardY(colIdx, slot)}
-                      match={match}
-                    />
-                  ))
-                })}
+              {/* ---- Left side match cards ---- */}
+              {LEFT_ROUNDS.map((rk, colIdx) => {
+                const matches = leftRounds[rk] ?? []
+                const depth = ROUND_DEPTH[rk] ?? 0
+                return matches.map((match) => (
+                  <MatchCardSVG
+                    key={match.id}
+                    x={leftColX(colIdx)}
+                    y={cardY(depth, match.slot)}
+                    match={match}
+                  />
+                ))
+              })}
 
-                {/* ---- Right side connectors ---- */}
-                <Connectors
-                  side="right"
-                  rounds={rounds}
-                  roundKeys={RIGHT_ROUNDS}
-                  getX={rightColX}
-                />
+              {/* ---- Right side connectors ---- */}
+              <Connectors
+                side="right"
+                rounds={rightRounds}
+                roundKeys={RIGHT_ROUNDS}
+                getX={rightColX}
+              />
 
-                {/* ---- Right side match cards ---- */}
-                {RIGHT_ROUNDS.map((rk, colIdx) => {
-                  const allMatches = rounds[rk as RoundKey] ?? []
-                  // Lado direito usa a segunda metade dos matches
-                  const startSlot = allMatches.length > 8 ? 8 : 0
-                  const halfMatches = allMatches.slice(startSlot)
-                  return halfMatches.map((match, slot) => (
-                    <MatchCardSVG
-                      key={`right-${match.id}`}
-                      x={rightColX(colIdx)}
-                      y={cardY(colIdx, slot)}
-                      match={match}
-                    />
-                  ))
-                })}
+              {/* ---- Right side match cards ---- */}
+              {RIGHT_ROUNDS.map((rk, colIdx) => {
+                const matches = rightRounds[rk] ?? []
+                const depth = ROUND_DEPTH[rk] ?? 0
+                return matches.map((match) => (
+                  <MatchCardSVG
+                    key={`right-${match.id}`}
+                    x={rightColX(colIdx)}
+                    y={cardY(depth, match.slot)}
+                    match={match}
+                  />
+                ))
+              })}
 
-                {/* ---- Final (centro) ---- */}
-                {(() => {
-                  const finalMatch = rounds.final?.[0] ?? null
-                  const cx = centerX() - CARD_W / 2
-                  const cy = (totalHeight() - CARD_H) / 2
-                  const sfH = slotH(3)
-                  const connX_left = leftColX(3) + CARD_W
-                  const connX_right = rightColX(0)
-                  const midLeft = connX_left + COL_GAP / 2
-                  const midRight = connX_right - COL_GAP / 2
-                  const finalCenterY = cy + CARD_H / 2
+              {/* ---- Final connectors ---- */}
+              <path
+                d={`M ${sfLeftConnX} ${sfLeftY} H ${midLeft} V ${finalCenterY} H ${cx}`}
+                fill="none"
+                stroke="#334155"
+                strokeWidth={1.5}
+              />
+              <path
+                d={`M ${sfRightConnX} ${sfRightY} H ${midRight} V ${finalCenterY} H ${cx + CARD_W}`}
+                fill="none"
+                stroke="#334155"
+                strokeWidth={1.5}
+              />
 
-                  // SF esquerdo: 2 matches, slots 0 e 1 de colIdx=3
-                  const sfLeftTop = cardY(3, 0) + CARD_H / 2
-                  const sfLeftBot = cardY(3, 1) + CARD_H / 2
-                  const sfRightTop = cardY(3, 0) + CARD_H / 2
-                  const sfRightBot = cardY(3, 1) + CARD_H / 2
+              {/* ---- Final card ---- */}
+              <MatchCardSVG
+                x={cx}
+                y={cy}
+                match={rounds.final?.[0] ?? null}
+              />
 
-                  return (
-                    <>
-                      {/* Connector SF esquerdo → Final */}
-                      <path
-                        d={`M ${connX_left} ${sfLeftTop} H ${midLeft} V ${finalCenterY} H ${cx}`}
-                        fill="none"
-                        stroke="#334155"
-                        strokeWidth={1.5}
-                      />
-                      <path
-                        d={`M ${connX_left} ${sfLeftBot} H ${midLeft}`}
-                        fill="none"
-                        stroke="#334155"
-                        strokeWidth={1.5}
-                      />
-                      {/* Connector SF direito → Final */}
-                      <path
-                        d={`M ${connX_right} ${sfRightTop} H ${midRight} V ${finalCenterY} H ${cx + CARD_W}`}
-                        fill="none"
-                        stroke="#334155"
-                        strokeWidth={1.5}
-                      />
-                      <path
-                        d={`M ${connX_right} ${sfRightBot} H ${midRight}`}
-                        fill="none"
-                        stroke="#334155"
-                        strokeWidth={1.5}
-                      />
-
-                      {/* Final card */}
-                      <MatchCardSVG x={cx} y={cy} match={finalMatch} />
-
-                      {/* 3º lugar */}
-                      {rounds.third?.[0] && (
-                        <>
-                          <text
-                            x={cx + CARD_W / 2}
-                            y={cy + CARD_H + 18}
-                            fontSize={9}
-                            fontWeight="700"
-                            fill="#475569"
-                            textAnchor="middle"
-                            letterSpacing="0.05em"
-                          >
-                            3º LUGAR
-                          </text>
-                          <MatchCardSVG
-                            x={cx}
-                            y={cy + CARD_H + 26}
-                            match={rounds.third[0]}
-                          />
-                        </>
-                      )}
-                    </>
-                  )
-                })()}
-              </g>
-            </svg>
-          </div>
-        )}
+              {/* ---- 3º lugar ---- */}
+              {rounds.third?.[0] && (
+                <>
+                  <text
+                    x={cx + CARD_W / 2}
+                    y={cy + CARD_H + 18}
+                    fontSize={9}
+                    fontWeight="700"
+                    fill="#475569"
+                    textAnchor="middle"
+                    letterSpacing="0.05em"
+                  >
+                    3º LUGAR
+                  </text>
+                  <MatchCardSVG
+                    x={cx}
+                    y={cy + CARD_H + 26}
+                    match={rounds.third[0]}
+                  />
+                </>
+              )}
+            </g>
+          </svg>
+        </div>
       </CardContent>
     </Card>
   )

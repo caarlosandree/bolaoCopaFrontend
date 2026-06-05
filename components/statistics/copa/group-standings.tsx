@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight, Loader2, Users } from "lucide-react"
+import { Loader2, Users } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+
 import { getGroupStandings } from "@/lib/api"
 import type { Group } from "@/lib/types"
 
@@ -131,39 +131,25 @@ export function GroupStandingsSection() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
-            {/* Dots */}
-            <div className="mr-2 flex gap-1">
-              {groups.map((_, i) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {groups.map((g, i) => {
+              const letter =
+                g.name.replace(/Grupo\s*/i, "").replace(/Group\s*/i, "") ||
+                String.fromCharCode(65 + i)
+              return (
                 <button
                   key={i}
                   onClick={() => setCurrent(i)}
-                  className={`h-1.5 rounded-full transition-all ${
+                  className={`flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-bold transition-all ${
                     i === current
-                      ? "w-4 bg-nina-red"
-                      : "w-1.5 bg-slate-600 hover:bg-slate-500"
+                      ? "bg-nina-red text-white shadow-md shadow-nina-red/20"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
                   }`}
-                />
-              ))}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCurrent((c) => Math.max(0, c - 1))}
-              disabled={current === 0}
-              className="h-7 w-7 rounded-lg text-slate-400 hover:text-white disabled:opacity-30"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCurrent((c) => Math.min(groups.length - 1, c + 1))}
-              disabled={current === groups.length - 1}
-              className="h-7 w-7 rounded-lg text-slate-400 hover:text-white disabled:opacity-30"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+                >
+                  {letter}
+                </button>
+              )
+            })}
           </div>
         </div>
       </CardHeader>
