@@ -150,3 +150,135 @@ export type SyncResultsResult = {
   scores_updated: number
   scores_skipped: number
 }
+
+// ==========================================
+// Statistics types
+// ==========================================
+
+export type BiggestWin = {
+  home_team: string
+  away_team: string
+  home_score: number
+  away_score: number
+  match_time: string
+}
+
+export type TopScorer = {
+  player: string
+  team: string
+  goals: number
+  badge: string
+}
+
+export type NextMatch = {
+  home_team: string
+  away_team: string
+  home_badge: string
+  away_badge: string
+  match_time: string
+  round: string
+  group?: string
+  venue?: string
+}
+
+export type CopaOverview = {
+  total_goals: number
+  biggest_win: BiggestWin | null
+  top_scorer: TopScorer | null
+  next_matches: NextMatch[]
+}
+
+export type TeamStanding = {
+  name: string
+  badge: string
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  gf: number
+  ga: number
+  gd: number
+  points: number
+}
+
+export type Group = {
+  name: string
+  teams: TeamStanding[]
+}
+
+export type GroupStandings = {
+  groups: Group[]
+}
+
+export type BracketTeam = {
+  name: string
+  badge: string
+  score: number | null
+}
+
+export type BracketMatch = {
+  id: string
+  home: BracketTeam
+  away: BracketTeam
+  status: "scheduled" | "ongoing" | "finished"
+  match_time: string
+  slot: number
+}
+
+export type BracketRounds = {
+  r32: BracketMatch[]
+  r16: BracketMatch[]
+  qf: BracketMatch[]
+  sf: BracketMatch[]
+  final: BracketMatch[]
+  third: BracketMatch[]
+}
+
+export type BracketData = {
+  rounds: BracketRounds
+}
+
+export type BestRound = {
+  name: string
+  total_points: number
+}
+
+export type BolaoOverview = {
+  total_guesses: number
+  exact_hits: number
+  hit_rate: number
+  best_round: BestRound | null
+}
+
+export type RoundPoint = {
+  round: number
+  cumulative_points: number
+}
+
+export type UserEvolution = {
+  user: string
+  avatar_url: string | null
+  points: RoundPoint[]
+}
+
+export type GuessDistribution = {
+  score: string
+  count: number
+}
+
+export type AccuracyRow = {
+  name: string
+  avatar_url: string | null
+  exact: number
+  partial: number
+  wrong: number
+  total: number
+  rate: number
+}
+
+export type BolaoStats = {
+  overview: BolaoOverview
+  points_evolution: UserEvolution[]
+  guess_distribution: GuessDistribution[]
+  accuracy_ranking: AccuracyRow[]
+}

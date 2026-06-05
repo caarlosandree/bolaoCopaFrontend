@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Target, Trophy } from "lucide-react"
+import { BarChart3, Target, Trophy } from "lucide-react"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 const items = [
   { label: "Palpites", href: "/dashboard", icon: Target },
   { label: "Ranking", href: "/ranking", icon: Trophy },
+  { label: "Estatísticas", href: "/estatisticas", icon: BarChart3 },
 ]
 
 export function NavJogador() {

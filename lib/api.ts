@@ -3,6 +3,10 @@ import type {
   ActiveRoundResponse,
   AdminMatchesPage,
   AuthResponse,
+  BolaoStats,
+  BracketData,
+  CopaOverview,
+  GroupStandings,
   MatchDetails,
   RankingEntry,
   RoundSummary,
@@ -174,4 +178,26 @@ export function uploadAvatar(file: File) {
     method: "POST",
     body: form,
   })
+}
+
+// Admin: listar usuários
+export function getAdminUsers() {
+  return request<User[]>("/api/admin/users")
+}
+
+// Estatísticas
+export function getCopaOverview() {
+  return request<CopaOverview>("/api/statistics/copa")
+}
+
+export function getGroupStandings() {
+  return request<GroupStandings>("/api/statistics/groups")
+}
+
+export function getBracket() {
+  return request<BracketData>("/api/statistics/bracket")
+}
+
+export function getBolaoStats() {
+  return request<BolaoStats>("/api/statistics/bolao")
 }
