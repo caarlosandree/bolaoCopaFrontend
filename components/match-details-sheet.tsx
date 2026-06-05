@@ -33,9 +33,16 @@ type MatchDetailsSheetProps = {
 }
 
 type LooseRecord = Record<string, unknown>
+type ResultCode = "W" | "D" | "L"
 
 const SECTION_CLASS =
   "rounded-xl border border-slate-800/70 bg-slate-950/40 p-3"
+
+const RESULT_CLASS: Record<ResultCode, string> = {
+  W: "border-green-900/50 bg-green-950/40 text-green-300",
+  D: "border-amber-900/50 bg-amber-950/40 text-amber-300",
+  L: "border-red-900/50 bg-red-950/40 text-red-300",
+}
 
 export function MatchDetailsSheet({ match }: MatchDetailsSheetProps) {
   const [open, setOpen] = useState(false)
@@ -58,7 +65,6 @@ export function MatchDetailsSheet({ match }: MatchDetailsSheetProps) {
   }
 
   const mediaEvent = useMemo(() => firstEvent(details?.media), [details?.media])
-  const sourceStatus = details?.source_status ?? []
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -111,7 +117,7 @@ export function MatchDetailsSheet({ match }: MatchDetailsSheetProps) {
               <LineupsSection details={details} match={match} />
               <StatsSection details={details} />
               <EventsSection details={details} />
-              <SourceStatusSection statuses={sourceStatus} details={details} />
+              <SourceStatusSection details={details} />
             </>
           )}
         </div>
@@ -130,28 +136,41 @@ function MatchHero({
   const venue = text(mediaEvent, "strVenue") ?? match.venue
   const city = text(mediaEvent, "strCity")
   const group = text(mediaEvent, "strGroup") ?? match.group_name
+  const image =
+    text(mediaEvent, "strThumb") ??
+    text(mediaEvent, "strPoster") ??
+    text(mediaEvent, "strBanner")
 
   return (
-    <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-4">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <TeamBlock name={match.home_team} align="left" />
-        <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-center">
-          <p className="text-[10px] font-black tracking-wider text-slate-500 uppercase">
-            Jogo
-          </p>
-          <p className="text-sm font-black text-white">
-            {match.home_score ?? "-"} x {match.away_score ?? "-"}
-          </p>
+    <div className="overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/60">
+      {image && (
+        <div className="relative aspect-[16/7] overflow-hidden bg-slate-900">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={image} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-900 to-transparent" />
         </div>
-        <TeamBlock name={match.away_team} align="right" />
-      </div>
-      <div className="grid gap-2 text-xs text-slate-400 sm:grid-cols-3">
-        <InfoPill
-          icon={CalendarClock}
-          label={formatDateTime(match.match_time)}
-        />
-        <InfoPill icon={MapPin} label={compactJoin([venue, city])} />
-        <InfoPill icon={Sparkles} label={group ?? "Grupo indisponível"} />
+      )}
+      <div className="p-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <TeamBlock name={match.home_team} align="left" />
+          <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-center">
+            <p className="text-[10px] font-black tracking-wider text-slate-500 uppercase">
+              Jogo
+            </p>
+            <p className="text-sm font-black text-white">
+              {match.home_score ?? "-"} x {match.away_score ?? "-"}
+            </p>
+          </div>
+          <TeamBlock name={match.away_team} align="right" />
+        </div>
+        <div className="grid gap-2 text-xs text-slate-400 sm:grid-cols-3">
+          <InfoPill
+            icon={CalendarClock}
+            label={formatDateTime(match.match_time)}
+          />
+          <InfoPill icon={MapPin} label={compactJoin([venue, city])} />
+          <InfoPill icon={Sparkles} label={group ?? "Grupo indisponível"} />
+        </div>
       </div>
     </div>
   )
@@ -175,13 +194,10 @@ function OddsSection({ details }: { details: MatchDetails }) {
   const odds = asRecord(details.odds)
   const bookmakers = asRecord(odds?.bookmakers)
   const bookmakerNames = bookmakers ? Object.keys(bookmakers).slice(0, 4) : []
+  const available = dataAvailable(details.odds)
 
   return (
-    <Section
-      icon={LineChart}
-      title="Odds de mercado"
-      available={details.availability.odds}
-    >
+    <Section icon={LineChart} title="Odds de mercado" available={available}>
       {bookmakerNames.length > 0 ? (
         <div className="grid gap-2 sm:grid-cols-2">
           {bookmakerNames.map((name) => (
@@ -196,8 +212,10 @@ function OddsSection({ details }: { details: MatchDetails }) {
             </div>
           ))}
         </div>
-      ) : (
+      ) : available ? (
         <RawPreview value={details.odds} />
+      ) : (
+        <Unavailable detail={sourceMessage(details.odds)} />
       )}
     </Section>
   )
@@ -211,20 +229,17 @@ function FormSection({
   match: Match
 }) {
   const form = asRecord(details.recent_form)
+  const available = dataAvailable(details.recent_form)
 
   return (
-    <Section
-      icon={Activity}
-      title="Últimos jogos"
-      available={details.availability.form}
-    >
-      {form ? (
+    <Section icon={Activity} title="Últimos jogos" available={available}>
+      {available && form ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <RecentTeamForm label={match.home_team} value={form.home} />
           <RecentTeamForm label={match.away_team} value={form.away} />
         </div>
       ) : (
-        <Unavailable />
+        <Unavailable detail={sourceMessage(details.recent_form)} />
       )}
     </Section>
   )
@@ -232,27 +247,56 @@ function FormSection({
 
 function RecentTeamForm({ label, value }: { label: string; value: unknown }) {
   const events = extractArray(value, ["schedule", "events"]).slice(0, 5)
+  const summary = summarizeForm(label, events)
+
   return (
     <div className="rounded-lg border border-slate-800/70 bg-slate-900/60 p-2">
-      <p className="mb-2 text-xs font-black text-white">{label}</p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-xs font-black text-white">
+          {label}
+        </p>
+        <div className="flex flex-shrink-0 gap-1">
+          {summary.map((result, index) => (
+            <span
+              key={`${label}-summary-${index}`}
+              className={cn(
+                "inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-black",
+                RESULT_CLASS[result]
+              )}
+            >
+              {result}
+            </span>
+          ))}
+        </div>
+      </div>
       {events.length > 0 ? (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {events.map((event, index) => (
             <div
               key={`${label}-${index}`}
-              className="flex items-center justify-between gap-2 text-[11px]"
+              className="rounded-lg border border-slate-800/60 bg-slate-950/50 p-2"
             >
-              <span className="truncate text-slate-400">
-                {text(event, "strEvent") ?? "Partida"}
-              </span>
-              <span className="font-bold text-slate-500">
-                {scoreText(event)}
-              </span>
+              <div className="mb-1 flex items-center justify-between gap-2 text-[11px]">
+                <span className="truncate font-bold text-slate-300">
+                  {text(event, "strEvent") ?? "Partida"}
+                </span>
+                <span className="flex-shrink-0 font-black text-white">
+                  {scoreText(event)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                <span className="truncate">
+                  {text(event, "strLeague") ?? "Competição"}
+                </span>
+                <span className="flex-shrink-0">
+                  {formatShortDate(text(event, "dateEvent"))}
+                </span>
+              </div>
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-xs text-slate-600">Ainda indisponível</p>
+        <Unavailable />
       )}
     </div>
   )
@@ -266,14 +310,11 @@ function LineupsSection({
   match: Match
 }) {
   const lineups = extractArray(details.lineups, ["lineup", "lineups"])
+  const available = dataAvailable(details.lineups) && lineups.length > 0
 
   return (
-    <Section
-      icon={Shirt}
-      title="Escalações e formação"
-      available={details.availability.lineups}
-    >
-      {lineups.length > 0 ? (
+    <Section icon={Shirt} title="Escalações e formação" available={available}>
+      {available ? (
         <div className="overflow-hidden rounded-xl border border-green-900/40 bg-green-950/30">
           <div className="grid min-h-80 grid-cols-2 gap-px bg-green-900/30 p-px">
             <PitchColumn team={match.home_team} items={lineups.slice(0, 11)} />
@@ -281,72 +322,99 @@ function LineupsSection({
           </div>
         </div>
       ) : (
-        <Unavailable />
+        <Unavailable detail={sourceMessage(details.lineups)} />
       )}
     </Section>
   )
 }
 
 function PitchColumn({ team, items }: { team: string; items: LooseRecord[] }) {
-  const fallback = items.length === 0
   return (
     <div className="flex min-h-80 flex-col justify-around bg-[linear-gradient(0deg,rgba(22,101,52,.35)_1px,transparent_1px),linear-gradient(90deg,rgba(22,101,52,.35)_1px,transparent_1px)] bg-size-[24px_24px] p-3">
       <p className="text-center text-[10px] font-black tracking-wider text-green-200 uppercase">
         {team}
       </p>
-      {fallback ? (
-        <p className="text-center text-xs font-bold text-green-200/60">
-          Escalação indisponível
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 gap-2">
-          {items.map((item, index) => (
-            <div
-              key={`${team}-${index}`}
-              className="rounded-lg border border-green-800/50 bg-slate-950/70 px-2 py-1 text-center"
-            >
-              <p className="truncate text-[10px] font-bold text-white">
-                {text(item, "strPlayer") ??
-                  text(item, "strPlayerName") ??
-                  text(item, "player") ??
-                  "Jogador"}
-              </p>
-              <p className="text-[9px] text-green-300/70">
-                {text(item, "strPosition") ?? text(item, "position") ?? "-"}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-2">
+        {items.map((item, index) => (
+          <div
+            key={`${team}-${index}`}
+            className="rounded-lg border border-green-800/50 bg-slate-950/70 px-2 py-1 text-center"
+          >
+            <p className="truncate text-[10px] font-bold text-white">
+              {text(item, "strPlayer") ??
+                text(item, "strPlayerName") ??
+                text(item, "player") ??
+                "Jogador"}
+            </p>
+            <p className="text-[9px] text-green-300/70">
+              {text(item, "strPosition") ?? text(item, "position") ?? "-"}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
 function StatsSection({ details }: { details: MatchDetails }) {
+  const stats = extractArray(details.statistics, [
+    "eventstats",
+    "stats",
+    "statistics",
+  ])
+  const available = dataAvailable(details.statistics) && stats.length > 0
+
   return (
-    <Section
-      icon={BarChart3}
-      title="Estatísticas"
-      available={details.availability.statistics}
-    >
-      {details.availability.statistics ? (
-        <RawPreview value={details.statistics} />
+    <Section icon={BarChart3} title="Estatísticas" available={available}>
+      {available ? (
+        <div className="space-y-2">
+          {stats.slice(0, 12).map((stat, index) => (
+            <StatRow key={index} stat={stat} />
+          ))}
+        </div>
       ) : (
-        <Unavailable />
+        <Unavailable detail={sourceMessage(details.statistics)} />
       )}
     </Section>
   )
 }
 
+function StatRow({ stat }: { stat: LooseRecord }) {
+  const label =
+    text(stat, "strStat") ??
+    text(stat, "stat") ??
+    text(stat, "name") ??
+    "Estatística"
+  const home = text(stat, "intHome") ?? text(stat, "home") ?? "0"
+  const away = text(stat, "intAway") ?? text(stat, "away") ?? "0"
+  const homeValue = Number(home)
+  const awayValue = Number(away)
+  const total = homeValue + awayValue
+  const homeWidth = total > 0 ? `${(homeValue / total) * 100}%` : "50%"
+  const awayWidth = total > 0 ? `${(awayValue / total) * 100}%` : "50%"
+
+  return (
+    <div className="rounded-lg border border-slate-800/60 bg-slate-900/50 p-2">
+      <div className="mb-1 flex items-center justify-between text-[11px]">
+        <span className="font-black text-white">{home}</span>
+        <span className="font-bold text-slate-400">{label}</span>
+        <span className="font-black text-white">{away}</span>
+      </div>
+      <div className="flex h-1.5 overflow-hidden rounded-full bg-slate-800">
+        <div className="bg-green-500" style={{ width: homeWidth }} />
+        <div className="bg-nina-orange" style={{ width: awayWidth }} />
+      </div>
+    </div>
+  )
+}
+
 function EventsSection({ details }: { details: MatchDetails }) {
   const events = extractArray(details.events, ["timeline", "events"])
+  const available = dataAvailable(details.events) && events.length > 0
+
   return (
-    <Section
-      icon={Users}
-      title="Timeline"
-      available={details.availability.events}
-    >
-      {events.length > 0 ? (
+    <Section icon={Users} title="Timeline" available={available}>
+      {available ? (
         <div className="space-y-2">
           {events.slice(0, 12).map((event, index) => (
             <div
@@ -356,29 +424,34 @@ function EventsSection({ details }: { details: MatchDetails }) {
               <span className="w-10 flex-shrink-0 font-black text-slate-500">
                 {text(event, "intTime") ?? text(event, "minute") ?? "-"} min
               </span>
-              <span className="min-w-0 flex-1 truncate text-slate-300">
-                {text(event, "strTimeline") ??
-                  text(event, "strPlayer") ??
-                  text(event, "event") ??
-                  "Evento"}
-              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold text-slate-300">
+                  {text(event, "strTimeline") ??
+                    text(event, "strPlayer") ??
+                    text(event, "event") ??
+                    "Evento"}
+                </p>
+                <p className="truncate text-[10px] text-slate-500">
+                  {compactJoin([
+                    text(event, "strTeam"),
+                    text(event, "strTimelineDetail"),
+                    text(event, "strComment"),
+                  ]) ?? "Detalhe indisponível"}
+                </p>
+              </div>
             </div>
           ))}
         </div>
       ) : (
-        <Unavailable />
+        <Unavailable detail={sourceMessage(details.events)} />
       )}
     </Section>
   )
 }
 
-function SourceStatusSection({
-  statuses,
-  details,
-}: {
-  statuses: MatchDetails["source_status"]
-  details: MatchDetails
-}) {
+function SourceStatusSection({ details }: { details: MatchDetails }) {
+  const statuses = details.source_status ?? []
+
   return (
     <div className={SECTION_CLASS}>
       <div className="mb-2 flex items-center gap-2">
@@ -405,8 +478,9 @@ function SourceStatusSection({
                     ? "border-red-900/40 bg-red-950/30 text-red-300"
                     : "border-slate-800 bg-slate-900 text-slate-500"
               )}
+              title={status.message}
             >
-              {status.section}: {status.status}
+              {sectionLabel(status.section)}: {statusLabel(status.status)}
             </span>
           ))
         ) : (
@@ -477,17 +551,22 @@ function RawPreview({ value }: { value: unknown }) {
   )
 }
 
-function Unavailable() {
+function Unavailable({ detail }: { detail?: string | null }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-slate-800/60 bg-slate-900/50 px-3 py-2 text-xs font-bold text-slate-500">
-      <CircleHelp className="h-3.5 w-3.5" />
-      Ainda indisponível
+    <div className="flex items-start gap-2 rounded-lg border border-slate-800/60 bg-slate-900/50 px-3 py-2 text-xs font-bold text-slate-500">
+      <CircleHelp className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+      <div>
+        <p>Ainda indisponível</p>
+        {detail && (
+          <p className="mt-0.5 text-[10px] text-slate-600">{detail}</p>
+        )}
+      </div>
     </div>
   )
 }
 
 function firstEvent(value: unknown): LooseRecord | null {
-  const events = extractArray(value, ["event", "events", "schedule"])
+  const events = extractArray(value, ["lookup", "event", "events", "schedule"])
   return events[0] ?? null
 }
 
@@ -510,6 +589,25 @@ function isRecord(value: unknown): value is LooseRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+function dataAvailable(value: unknown): boolean {
+  if (!value) return false
+  if (Array.isArray(value)) return value.length > 0
+  const record = asRecord(value)
+  if (!record) return true
+  if (sourceMessage(record)) return false
+  return Object.values(record).some((item) => {
+    if (Array.isArray(item)) return item.length > 0
+    if (isRecord(item)) return !sourceMessage(item)
+    return item !== null && item !== ""
+  })
+}
+
+function sourceMessage(value: unknown): string | null {
+  const message = text(value, "Message") ?? text(value, "message")
+  if (!message) return null
+  return message === "No data found" ? "Sem dados na fonte" : message
+}
+
 function text(value: unknown, key: string): string | null {
   const record = asRecord(value)
   const raw = record?.[key]
@@ -525,6 +623,55 @@ function scoreText(value: unknown) {
   return "-"
 }
 
+function summarizeForm(teamName: string, events: LooseRecord[]): ResultCode[] {
+  return events
+    .map((event) => resultForTeam(teamName, event))
+    .filter((result): result is ResultCode => Boolean(result))
+    .slice(0, 5)
+}
+
+function resultForTeam(
+  teamName: string,
+  event: LooseRecord
+): ResultCode | null {
+  const home = text(event, "strHomeTeam")
+  const away = text(event, "strAwayTeam")
+  const homeScore = Number(text(event, "intHomeScore"))
+  const awayScore = Number(text(event, "intAwayScore"))
+  if (!home || !away || Number.isNaN(homeScore) || Number.isNaN(awayScore)) {
+    return null
+  }
+  const isHome = normalize(home) === normalize(teamName)
+  const isAway = normalize(away) === normalize(teamName)
+  if (!isHome && !isAway) return null
+  if (homeScore === awayScore) return "D"
+  const won = isHome ? homeScore > awayScore : awayScore > homeScore
+  return won ? "W" : "L"
+}
+
+function sectionLabel(value: string) {
+  const labels: Record<string, string> = {
+    media: "mídia",
+    statistics: "stats",
+    events: "eventos",
+    form_home: "forma casa",
+    form_away: "forma fora",
+    odds: "odds",
+    lineups: "escalação",
+  }
+  return labels[value] ?? value
+}
+
+function statusLabel(value: string) {
+  const labels: Record<string, string> = {
+    success: "ok",
+    partial: "parcial",
+    failed: "falhou",
+    unavailable: "indisponível",
+  }
+  return labels[value] ?? value
+}
+
 function compactJoin(values: Array<string | null | undefined>) {
   const parts = values.filter((value): value is string => Boolean(value))
   return parts.length > 0 ? parts.join(" · ") : null
@@ -537,4 +684,20 @@ function formatDateTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   })
+}
+
+function formatShortDate(value: string | null) {
+  if (!value) return "-"
+  return new Date(value).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+  })
+}
+
+function normalize(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
 }
