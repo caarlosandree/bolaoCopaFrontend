@@ -11,6 +11,7 @@ import {
   Calendar,
   CheckCircle2,
   Lock,
+  MapPin,
   RotateCcw,
   Target,
   Trophy,
@@ -200,6 +201,13 @@ export default function DashboardPage() {
     return new Date(matchTime).toLocaleDateString("pt-BR", {
       day: "numeric",
       month: "short",
+    })
+  }
+
+  function formatMatchTime(matchTime: string): string {
+    return new Date(matchTime).toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
     })
   }
 
@@ -408,34 +416,52 @@ export default function DashboardPage() {
 
                       <CardContent className="flex flex-col gap-4 p-4 pt-5">
                         {/* Zona 1: Meta-info */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                            <Calendar className="h-3 w-3" />
-                            {formatMatchDate(match.match_time)}
+                        <div className="flex items-start justify-between gap-2">
+                          {/* Esquerda: data, hora e estádio */}
+                          <div className="flex min-w-0 flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
+                              <Calendar className="h-3 w-3 flex-shrink-0 text-slate-500" />
+                              {formatMatchDate(match.match_time)} ·{" "}
+                              {formatMatchTime(match.match_time)}
+                            </div>
+                            {match.venue && (
+                              <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                                <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                                <span className="truncate">{match.venue}</span>
+                              </div>
+                            )}
                           </div>
 
-                          {match.status === "finished" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-800/80 bg-slate-900/60 px-2.5 py-0.5 text-[10px] font-extrabold text-slate-400">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Finalizado
-                            </span>
-                          ) : locked ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-red-900/30 bg-red-950/40 px-2.5 py-0.5 text-[10px] font-extrabold text-red-400">
-                              <Lock className="h-3 w-3" />
-                              Bloqueado
-                            </span>
-                          ) : (
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold ${
-                                warning
-                                  ? "animate-pulse border-amber-900/40 bg-amber-950/40 text-amber-400"
-                                  : "border-green-900/40 bg-green-950/30 text-green-400"
-                              }`}
-                            >
-                              <Clock className="h-3 w-3" />
-                              Fecha em {formatCountdown(match.match_time)}
-                            </span>
-                          )}
+                          {/* Direita: grupo + badge de status */}
+                          <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                            {match.group_name && (
+                              <span className="text-[10px] font-black tracking-wider text-slate-500 uppercase">
+                                {match.group_name}
+                              </span>
+                            )}
+                            {match.status === "finished" ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-slate-800/80 bg-slate-900/60 px-2.5 py-0.5 text-[10px] font-extrabold text-slate-400">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Finalizado
+                              </span>
+                            ) : locked ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-red-900/30 bg-red-950/40 px-2.5 py-0.5 text-[10px] font-extrabold text-red-400">
+                                <Lock className="h-3 w-3" />
+                                Bloqueado
+                              </span>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold ${
+                                  warning
+                                    ? "animate-pulse border-amber-900/40 bg-amber-950/40 text-amber-400"
+                                    : "border-green-900/40 bg-green-950/30 text-green-400"
+                                }`}
+                              >
+                                <Clock className="h-3 w-3" />
+                                Fecha em {formatCountdown(match.match_time)}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Zona 2: Confronto — bandeiras + inputs */}

@@ -40,6 +40,8 @@ export type Match = {
   away_score: number | null
   status: "scheduled" | "ongoing" | "finished"
   match_time: string
+  group_name?: string | null
+  venue?: string | null
   user_guess?: UserGuess | null
 }
 
