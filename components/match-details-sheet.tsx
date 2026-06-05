@@ -81,7 +81,7 @@ export function MatchDetailsSheet({ match }: MatchDetailsSheetProps) {
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="w-full overflow-y-auto border-slate-800 bg-slate-950 p-0 text-slate-100 sm:max-w-xl"
+        className="w-full overflow-y-auto border-slate-800 bg-slate-950 p-0 text-slate-100 data-[side=right]:sm:max-w-[50vw] data-[side=right]:sm:min-w-[540px] data-[side=right]:2xl:max-w-[800px]"
       >
         <SheetHeader className="border-b border-slate-800/80 p-4 pr-12">
           <SheetTitle className="text-left text-base font-black text-white">
@@ -199,7 +199,7 @@ function OddsSection({ details }: { details: MatchDetails }) {
   return (
     <Section icon={LineChart} title="Odds de mercado" available={available}>
       {bookmakerNames.length > 0 ? (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {bookmakerNames.map((name) => (
             <div
               key={name}
@@ -316,7 +316,7 @@ function LineupsSection({
     <Section icon={Shirt} title="Escalações e formação" available={available}>
       {available ? (
         <div className="overflow-hidden rounded-xl border border-green-900/40 bg-green-950/30">
-          <div className="grid min-h-80 grid-cols-2 gap-px bg-green-900/30 p-px">
+          <div className="grid min-h-80 grid-cols-1 sm:grid-cols-2 gap-px bg-green-900/30 p-px">
             <PitchColumn team={match.home_team} items={lineups.slice(0, 11)} />
             <PitchColumn team={match.away_team} items={lineups.slice(11, 22)} />
           </div>
@@ -367,8 +367,8 @@ function StatsSection({ details }: { details: MatchDetails }) {
   return (
     <Section icon={BarChart3} title="Estatísticas" available={available}>
       {available ? (
-        <div className="space-y-2">
-          {stats.slice(0, 12).map((stat, index) => (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {stats.slice(0, 20).map((stat, index) => (
             <StatRow key={index} stat={stat} />
           ))}
         </div>
@@ -415,8 +415,8 @@ function EventsSection({ details }: { details: MatchDetails }) {
   return (
     <Section icon={Users} title="Timeline" available={available}>
       {available ? (
-        <div className="space-y-2">
-          {events.slice(0, 12).map((event, index) => (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {events.slice(0, 24).map((event, index) => (
             <div
               key={index}
               className="flex items-center gap-2 rounded-lg border border-slate-800/60 bg-slate-900/50 px-2 py-1.5 text-xs"
