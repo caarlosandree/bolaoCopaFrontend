@@ -1,22 +1,16 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import Image from "next/image"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Calendar, ShieldAlert, CheckCircle, Flame, ArrowLeft, Save } from "lucide-react"
+import { Calendar, ClipboardList, CheckCircle, Flame, Save } from "lucide-react"
 import { getActiveRound, updateMatchScore } from "@/lib/api"
-import { getUser, isLoggedIn } from "@/lib/auth"
 import type { Match } from "@/lib/types"
 
 type ScoreInput = { homeScore: string; awayScore: string }
 
-export default function AdminPage() {
-  const router = useRouter()
-  const user = getUser()
-
+export default function ResultadosPage() {
   const [matches, setMatches] = useState<Match[]>([])
   const [roundName, setRoundName] = useState("")
   const [inputs, setInputs] = useState<Record<number, ScoreInput>>({})
@@ -26,10 +20,6 @@ export default function AdminPage() {
   const [pageLoading, setPageLoading] = useState(true)
 
   useEffect(() => {
-    if (!isLoggedIn() || user?.role !== "admin") {
-      router.push("/login")
-      return
-    }
     loadMatches()
   }, [])
 
@@ -93,57 +83,30 @@ export default function AdminPage() {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 border-2 border-nina-purple border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8">
-      {/* HEADER */}
-      <header className="max-w-4xl mx-auto flex items-center justify-between border-b border-slate-800 pb-6 mb-8">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/dashboard")}
-            className="text-slate-400 hover:text-white cursor-pointer flex items-center"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Voltar
-          </Button>
-          <div className="h-6 w-px bg-slate-800 hidden sm:block" />
-          <Image
-            src="/logo-branca-nina.png"
-            alt="Nina Logo"
-            width={90}
-            height={18}
-            priority
-            className="h-auto w-auto object-contain hidden sm:block"
-          />
-          <div className="h-6 w-px bg-slate-800 hidden sm:block" />
-          <div>
-            <h1 className="text-xl md:text-2xl font-black bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent tracking-tight">
-              PAINEL DO ADMINISTRADOR
-            </h1>
-            <p className="text-xs text-slate-400 font-medium">
-              {roundName ? `Rodada ativa: ${roundName}` : "Controle de resultados e pontuação"}
-            </p>
-          </div>
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Page header */}
+      <div className="flex items-center gap-3">
+        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-nina-purple/20 to-nina-wine/20 border border-nina-purple/30 flex items-center justify-center">
+          <ClipboardList className="h-4 w-4 text-nina-purple" />
         </div>
-
-        <div className="flex items-center gap-2 border border-nina-purple/30 rounded-full px-4 py-1.5 text-nina-purple text-[10px] uppercase font-bold tracking-widest">
-          <ShieldAlert className="h-4 w-4" />
-          Admin
+        <div>
+          <h1 className="text-xl font-black text-white tracking-tight">Lançar Resultados</h1>
+          <p className="text-xs text-slate-500">
+            {roundName ? `Rodada ativa: ${roundName}` : "Nenhuma rodada ativa"}
+          </p>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Jogos */}
-        <section className="lg:col-span-2 space-y-6">
-          <h2 className="text-lg font-bold text-slate-200">Lançamento de Resultados</h2>
-
+        <section className="lg:col-span-2 space-y-4">
           {matches.length === 0 ? (
             <Card className="bg-slate-900/40 border border-slate-800 p-8 text-center rounded-2xl">
               <p className="text-slate-400 text-sm">Nenhuma partida na rodada ativa.</p>
@@ -243,10 +206,10 @@ export default function AdminPage() {
         </section>
 
         {/* Console */}
-        <section className="space-y-6">
+        <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-nina-orange" />
-            <h2 className="text-lg font-bold text-slate-200">Console de Transações</h2>
+            <h2 className="text-base font-bold text-slate-200">Console de Transações</h2>
           </div>
 
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 h-[340px] flex flex-col justify-between shadow-xl">
@@ -257,10 +220,7 @@ export default function AdminPage() {
                 </div>
               ) : (
                 logs.map((log, idx) => (
-                  <div
-                    key={idx}
-                    className={log.startsWith("[ERRO]") ? "text-red-400" : "text-nina-green"}
-                  >
+                  <div key={idx} className={log.startsWith("[ERRO]") ? "text-red-400" : "text-nina-green"}>
                     {log}
                   </div>
                 ))
@@ -272,7 +232,7 @@ export default function AdminPage() {
             </div>
           </div>
         </section>
-      </main>
+      </div>
     </div>
   )
 }
