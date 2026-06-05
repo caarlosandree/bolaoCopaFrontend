@@ -103,13 +103,21 @@ export default function RodasPage() {
         <CardContent className="flex items-start gap-3 p-4">
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-400" />
           <div className="space-y-1 text-xs text-slate-300">
-            <p className="font-bold text-emerald-300">Gerenciamento automático</p>
+            <p className="font-bold text-emerald-300">
+              Gerenciamento automático
+            </p>
             <p>
-              As rodadas são criadas automaticamente ao sincronizar o calendário via TheSportsDB.
-              Uma rodada é ativada automaticamente{" "}
-              <span className="font-bold text-white">24h antes do primeiro jogo</span> e
-              finalizada quando <span className="font-bold text-white">todos os jogos terminarem</span>.
-              Use o botão <span className="font-bold text-white">Ativar</span> para liberar palpites antecipadamente.
+              As rodadas são criadas automaticamente ao sincronizar o calendário
+              via TheSportsDB. Uma rodada é ativada automaticamente{" "}
+              <span className="font-bold text-white">
+                24h antes do primeiro jogo
+              </span>{" "}
+              e finalizada quando{" "}
+              <span className="font-bold text-white">
+                todos os jogos terminarem
+              </span>
+              . Use o botão <span className="font-bold text-white">Ativar</span>{" "}
+              para liberar palpites antecipadamente.
             </p>
             {activeRound && (
               <p className="mt-2 font-bold text-white">
@@ -162,15 +170,18 @@ export default function RodasPage() {
                         </p>
                         <div className="mt-0.5 flex items-center gap-3">
                           <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                            {round.match_count} jogo{round.match_count !== 1 ? "s" : ""}
+                            {round.match_count} jogo
+                            {round.match_count !== 1 ? "s" : ""}
                           </span>
                           {round.first_match_at && (
                             <span className="flex items-center gap-1 text-[10px] text-slate-600">
                               <Calendar className="h-2.5 w-2.5" />
                               {formatDate(round.first_match_at)}
-                              {round.last_match_at && round.last_match_at !== round.first_match_at && (
-                                <> → {formatDate(round.last_match_at)}</>
-                              )}
+                              {round.last_match_at &&
+                                round.last_match_at !==
+                                  round.first_match_at && (
+                                  <> → {formatDate(round.last_match_at)}</>
+                                )}
                             </span>
                           )}
                         </div>

@@ -67,13 +67,16 @@ export default function ResultadosPage() {
       const data = await getSyncLogs("results")
       setLogs(
         data.map((entry) => {
-          const timestamp = new Date(entry.occurred_at).toLocaleString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })
+          const timestamp = new Date(entry.occurred_at).toLocaleString(
+            "pt-BR",
+            {
+              day: "2-digit",
+              month: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            }
+          )
           const metadata = formatLogMetadata(entry.metadata)
           return `[${timestamp}] Sincronização de resultados — ${entry.outcome.toUpperCase()} (${entry.status_code})${metadata}`
         })

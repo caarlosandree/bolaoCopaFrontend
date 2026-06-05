@@ -735,7 +735,9 @@ export default function DashboardPage() {
       ) : (
         <Card className="rounded-2xl border border-slate-800 bg-slate-900/40 p-10 text-center">
           <AlertCircle className="mx-auto mb-3 h-8 w-8 text-nina-red/60" />
-          <h3 className="font-bold text-slate-200">Nenhuma rodada disponível</h3>
+          <h3 className="font-bold text-slate-200">
+            Nenhuma rodada disponível
+          </h3>
           <p className="mx-auto mt-1 max-w-sm text-xs text-slate-400">
             As rodadas serão abertas automaticamente 24h antes do início dos
             jogos.

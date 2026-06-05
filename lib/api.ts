@@ -140,9 +140,12 @@ export function resetSchedule() {
 }
 
 export function activateRound(roundId: number) {
-  return request<{ message: string; round_id: number }>(`/api/admin/rounds/${roundId}/activate`, {
-    method: "POST",
-  })
+  return request<{ message: string; round_id: number }>(
+    `/api/admin/rounds/${roundId}/activate`,
+    {
+      method: "POST",
+    }
+  )
 }
 
 export function syncMatchDetails() {

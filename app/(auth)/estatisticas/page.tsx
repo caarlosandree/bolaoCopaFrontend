@@ -107,7 +107,9 @@ function EstatisticasContent() {
             <BarChart3 className="h-6 w-6 text-nina-red" />
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-white">Estatísticas</h1>
+            <h1 className="text-2xl font-black tracking-tight text-white">
+              Estatísticas
+            </h1>
             <p className="text-xs font-medium text-slate-400">
               Copa do Mundo 2026 · dados em tempo real
             </p>

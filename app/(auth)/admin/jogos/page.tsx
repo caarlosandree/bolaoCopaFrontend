@@ -106,13 +106,16 @@ export default function JogosPage() {
       const data = await getSyncLogs("schedule")
       setLogs(
         data.map((entry) => {
-          const timestamp = new Date(entry.occurred_at).toLocaleString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })
+          const timestamp = new Date(entry.occurred_at).toLocaleString(
+            "pt-BR",
+            {
+              day: "2-digit",
+              month: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            }
+          )
           const metadata = formatLogMetadata(entry.metadata)
           return `[${timestamp}] ${labelForSyncAction(entry.action)} — ${entry.outcome.toUpperCase()} (${entry.status_code})${metadata}`
         })
@@ -165,16 +168,25 @@ export default function JogosPage() {
   }
 
   async function handleReset() {
-    if (!confirm("Isso vai APAGAR todos os jogos, rodadas e palpites e reimportar do zero. Continuar?")) return
+    if (
+      !confirm(
+        "Isso vai APAGAR todos os jogos, rodadas e palpites e reimportar do zero. Continuar?"
+      )
+    )
+      return
     setResetting(true)
     addLog("Resetando calendário e reimportando do TheSportsDB...")
     try {
       const result = await resetSchedule()
-      addLog(`[OK] ${result.message} — ${result.imported} partida(s) importada(s).`)
+      addLog(
+        `[OK] ${result.message} — ${result.imported} partida(s) importada(s).`
+      )
       await loadMatches(1)
       await loadLogs()
     } catch (err) {
-      addLog(`[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`)
+      addLog(
+        `[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`
+      )
     } finally {
       setResetting(false)
     }
@@ -191,7 +203,9 @@ export default function JogosPage() {
       }
       await loadLogs()
     } catch (err) {
-      addLog(`[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`)
+      addLog(
+        `[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`
+      )
     } finally {
       setSyncingDetails(false)
     }
@@ -318,7 +332,9 @@ export default function JogosPage() {
                     variant="outline"
                     size="icon-sm"
                     className="border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
-                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    onClick={() =>
+                      setPage((current) => Math.max(1, current - 1))
+                    }
                     disabled={page <= 1}
                     aria-label="Página anterior"
                   >
@@ -364,7 +380,9 @@ export default function JogosPage() {
                 onClick={handleSync}
                 disabled={syncing || resetting}
               >
-                <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
+                <RefreshCw
+                  className={cn("h-4 w-4", syncing && "animate-spin")}
+                />
                 {syncing ? "Sincronizando..." : "Sincronizar Calendário"}
               </Button>
 
@@ -374,7 +392,12 @@ export default function JogosPage() {
                 onClick={handleSyncDetails}
                 disabled={syncing || resetting || syncingDetails}
               >
-                <Database className={cn("h-3.5 w-3.5", syncingDetails && "animate-pulse")} />
+                <Database
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    syncingDetails && "animate-pulse"
+                  )}
+                />
                 {syncingDetails ? "Sincronizando detalhes..." : "Sync Detalhes"}
               </Button>
 
@@ -384,7 +407,9 @@ export default function JogosPage() {
                 onClick={handleReset}
                 disabled={syncing || resetting || syncingDetails}
               >
-                <Trash2 className={cn("h-3.5 w-3.5", resetting && "animate-pulse")} />
+                <Trash2
+                  className={cn("h-3.5 w-3.5", resetting && "animate-pulse")}
+                />
                 {resetting ? "Resetando..." : "Resetar e Reimportar"}
               </Button>
             </div>

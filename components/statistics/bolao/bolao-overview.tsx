@@ -22,9 +22,13 @@ function StatCard({
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">{label}</p>
+          <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+            {label}
+          </p>
           <p className="mt-1 text-xl font-black text-white">{value}</p>
-          {sub && <p className="mt-0.5 truncate text-xs text-slate-400">{sub}</p>}
+          {sub && (
+            <p className="mt-0.5 truncate text-xs text-slate-400">{sub}</p>
+          )}
         </div>
       </CardContent>
     </Card>

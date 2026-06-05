@@ -36,6 +36,8 @@ const flagMapping: Record<string, string> = {
   "trinidad e tobago": "tt",
   "trinidad and tobago": "tt",
   "costa rica": "cr",
+  haiti: "ht",
+  curacao: "cw",
 
   // Europa (UEFA)
   alemanha: "de",
@@ -99,6 +101,7 @@ const flagMapping: Record<string, string> = {
   finland: "fi",
   "bosnia e herzegovina": "ba",
   "bosnia and herzegovina": "ba",
+  "bosnia-herzegovina": "ba",
   bosnia: "ba",
   montenegro: "me",
   "macedonia do norte": "mk",

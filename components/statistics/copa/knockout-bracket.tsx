@@ -109,11 +109,7 @@ function MatchCardSVG({
     awayScore !== undefined &&
     awayScore > homeScore
 
-  const borderColor = isOngoing
-    ? "#D91E4E"
-    : isFinished
-      ? "#475569"
-      : "#334155"
+  const borderColor = isOngoing ? "#D91E4E" : isFinished ? "#475569" : "#334155"
 
   return (
     <g>
@@ -203,36 +199,32 @@ function MatchCardSVG({
 }
 
 // ==========================================
-// Connector lines SVG
+// Connector lines between two adjacent columns
 // ==========================================
-function Connectors({
-  side,
-  rounds,
-  roundKeys,
-  getX,
+function ConnectorLayer({
+  fromMatches,
+  toMatches,
+  fromDepth,
+  toDepth,
+  fromX,
+  toX,
 }: {
-  side: "left" | "right"
-  rounds: BracketRounds
-  roundKeys: readonly string[]
-  getX: (colIndex: number) => number
+  fromMatches: BracketMatch[]
+  toMatches: BracketMatch[]
+  fromDepth: number
+  toDepth: number
+  fromX: number
+  toX: number
 }) {
   const paths: string[] = []
+  const midX = (fromX + CARD_W + toX) / 2
+  const forward = fromMatches.length >= toMatches.length
 
-  for (let colIdx = 0; colIdx < roundKeys.length - 1; colIdx++) {
-    const fromKey = roundKeys[colIdx] as RoundKey
-    const toKey = roundKeys[colIdx + 1] as RoundKey
-    const fromMatches = rounds[fromKey] ?? []
-    const toMatches = rounds[toKey] ?? []
-    const fromDepth = ROUND_DEPTH[fromKey] ?? 0
-    const toDepth = ROUND_DEPTH[toKey] ?? 0
-
-    const fromX = getX(colIdx)
-    const toX = getX(colIdx + 1)
-
+  if (forward) {
+    // from has more/equal matches: each to[i] is parent of from[i*2] and from[i*2+1]
     for (let i = 0; i < toMatches.length; i++) {
       const topSlot = i * 2
       const botSlot = i * 2 + 1
-
       const topMatch = fromMatches.find((m) => m.slot === topSlot)
       const botMatch = fromMatches.find((m) => m.slot === botSlot)
       const parentMatch = toMatches[i]
@@ -242,31 +234,43 @@ function Connectors({
 
       if (topMatch) {
         const topY = cardY(fromDepth, topSlot) + CARD_H / 2
-        const fromRight = side === "left" ? fromX + CARD_W : fromX
-        const dir = side === "left" ? 1 : -1
-
         paths.push(
-          `M ${fromRight} ${topY} H ${fromRight + dir * (COL_GAP / 2)} V ${parentY}`
+          `M ${fromX + CARD_W} ${topY} H ${midX} V ${parentY}`
         )
       }
 
       if (botMatch) {
         const botY = cardY(fromDepth, botSlot) + CARD_H / 2
-        const fromRight = side === "left" ? fromX + CARD_W : fromX
-        const dir = side === "left" ? 1 : -1
+        paths.push(`M ${fromX + CARD_W} ${botY} H ${midX} V ${parentY}`)
+      }
 
+      paths.push(`M ${midX} ${parentY} H ${toX}`)
+    }
+  } else {
+    // from has fewer matches: each from[i] is parent of to[i*2] and to[i*2+1]
+    for (let i = 0; i < fromMatches.length; i++) {
+      const topSlot = i * 2
+      const botSlot = i * 2 + 1
+      const parentMatch = fromMatches[i]
+      const topMatch = toMatches.find((m) => m.slot === topSlot)
+      const botMatch = toMatches.find((m) => m.slot === botSlot)
+      if (!parentMatch) continue
+
+      const parentY = cardY(fromDepth, i) + CARD_H / 2
+
+      if (topMatch) {
+        const topY = cardY(toDepth, topSlot) + CARD_H / 2
         paths.push(
-          `M ${fromRight} ${botY} H ${fromRight + dir * (COL_GAP / 2)}`
+          `M ${fromX + CARD_W} ${parentY} H ${midX} V ${topY} H ${toX}`
         )
       }
 
-      const junctionX =
-        side === "left"
-          ? getX(colIdx) + CARD_W + COL_GAP / 2
-          : getX(colIdx) - COL_GAP / 2
-      const toLeft = side === "left" ? toX : toX + CARD_W
-
-      paths.push(`M ${junctionX} ${parentY} H ${toLeft}`)
+      if (botMatch) {
+        const botY = cardY(toDepth, botSlot) + CARD_H / 2
+        paths.push(
+          `M ${fromX + CARD_W} ${parentY} H ${midX} V ${botY} H ${toX}`
+        )
+      }
     }
   }
 
@@ -313,54 +317,278 @@ function RoundLabel({
 function generateKnockoutTemplate(): BracketRounds {
   const r32Matches: BracketMatch[] = [
     // Lado superior do bracket (slots 0-7)
-    { id: "r32-0", home: { name: "1º Grupo A", badge: "", score: null }, away: { name: "2º Grupo B", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
-    { id: "r32-1", home: { name: "1º Grupo C", badge: "", score: null }, away: { name: "2º Grupo D", badge: "", score: null }, status: "scheduled", match_time: "", slot: 1 },
-    { id: "r32-2", home: { name: "1º Grupo E", badge: "", score: null }, away: { name: "2º Grupo F", badge: "", score: null }, status: "scheduled", match_time: "", slot: 2 },
-    { id: "r32-3", home: { name: "1º Grupo G", badge: "", score: null }, away: { name: "2º Grupo H", badge: "", score: null }, status: "scheduled", match_time: "", slot: 3 },
-    { id: "r32-4", home: { name: "1º Grupo I", badge: "", score: null }, away: { name: "2º Grupo J", badge: "", score: null }, status: "scheduled", match_time: "", slot: 4 },
-    { id: "r32-5", home: { name: "1º Grupo K", badge: "", score: null }, away: { name: "2º Grupo L", badge: "", score: null }, status: "scheduled", match_time: "", slot: 5 },
-    { id: "r32-6", home: { name: "3º Melhor 1", badge: "", score: null }, away: { name: "3º Melhor 2", badge: "", score: null }, status: "scheduled", match_time: "", slot: 6 },
-    { id: "r32-7", home: { name: "3º Melhor 3", badge: "", score: null }, away: { name: "3º Melhor 4", badge: "", score: null }, status: "scheduled", match_time: "", slot: 7 },
+    {
+      id: "r32-0",
+      home: { name: "1º Grupo A", badge: "", score: null },
+      away: { name: "2º Grupo B", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 0,
+    },
+    {
+      id: "r32-1",
+      home: { name: "1º Grupo C", badge: "", score: null },
+      away: { name: "2º Grupo D", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 1,
+    },
+    {
+      id: "r32-2",
+      home: { name: "1º Grupo E", badge: "", score: null },
+      away: { name: "2º Grupo F", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 2,
+    },
+    {
+      id: "r32-3",
+      home: { name: "1º Grupo G", badge: "", score: null },
+      away: { name: "2º Grupo H", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 3,
+    },
+    {
+      id: "r32-4",
+      home: { name: "1º Grupo I", badge: "", score: null },
+      away: { name: "2º Grupo J", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 4,
+    },
+    {
+      id: "r32-5",
+      home: { name: "1º Grupo K", badge: "", score: null },
+      away: { name: "2º Grupo L", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 5,
+    },
+    {
+      id: "r32-6",
+      home: { name: "3º Melhor 1", badge: "", score: null },
+      away: { name: "3º Melhor 2", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 6,
+    },
+    {
+      id: "r32-7",
+      home: { name: "3º Melhor 3", badge: "", score: null },
+      away: { name: "3º Melhor 4", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 7,
+    },
     // Lado inferior do bracket (slots 8-15)
-    { id: "r32-8", home: { name: "1º Grupo B", badge: "", score: null }, away: { name: "2º Grupo A", badge: "", score: null }, status: "scheduled", match_time: "", slot: 8 },
-    { id: "r32-9", home: { name: "1º Grupo D", badge: "", score: null }, away: { name: "2º Grupo C", badge: "", score: null }, status: "scheduled", match_time: "", slot: 9 },
-    { id: "r32-10", home: { name: "1º Grupo F", badge: "", score: null }, away: { name: "2º Grupo E", badge: "", score: null }, status: "scheduled", match_time: "", slot: 10 },
-    { id: "r32-11", home: { name: "1º Grupo H", badge: "", score: null }, away: { name: "2º Grupo G", badge: "", score: null }, status: "scheduled", match_time: "", slot: 11 },
-    { id: "r32-12", home: { name: "1º Grupo J", badge: "", score: null }, away: { name: "2º Grupo I", badge: "", score: null }, status: "scheduled", match_time: "", slot: 12 },
-    { id: "r32-13", home: { name: "1º Grupo L", badge: "", score: null }, away: { name: "2º Grupo K", badge: "", score: null }, status: "scheduled", match_time: "", slot: 13 },
-    { id: "r32-14", home: { name: "3º Melhor 5", badge: "", score: null }, away: { name: "3º Melhor 6", badge: "", score: null }, status: "scheduled", match_time: "", slot: 14 },
-    { id: "r32-15", home: { name: "3º Melhor 7", badge: "", score: null }, away: { name: "3º Melhor 8", badge: "", score: null }, status: "scheduled", match_time: "", slot: 15 },
+    {
+      id: "r32-8",
+      home: { name: "1º Grupo B", badge: "", score: null },
+      away: { name: "2º Grupo A", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 8,
+    },
+    {
+      id: "r32-9",
+      home: { name: "1º Grupo D", badge: "", score: null },
+      away: { name: "2º Grupo C", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 9,
+    },
+    {
+      id: "r32-10",
+      home: { name: "1º Grupo F", badge: "", score: null },
+      away: { name: "2º Grupo E", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 10,
+    },
+    {
+      id: "r32-11",
+      home: { name: "1º Grupo H", badge: "", score: null },
+      away: { name: "2º Grupo G", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 11,
+    },
+    {
+      id: "r32-12",
+      home: { name: "1º Grupo J", badge: "", score: null },
+      away: { name: "2º Grupo I", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 12,
+    },
+    {
+      id: "r32-13",
+      home: { name: "1º Grupo L", badge: "", score: null },
+      away: { name: "2º Grupo K", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 13,
+    },
+    {
+      id: "r32-14",
+      home: { name: "3º Melhor 5", badge: "", score: null },
+      away: { name: "3º Melhor 6", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 14,
+    },
+    {
+      id: "r32-15",
+      home: { name: "3º Melhor 7", badge: "", score: null },
+      away: { name: "3º Melhor 8", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 15,
+    },
   ]
 
   const r16Matches: BracketMatch[] = [
-    { id: "r16-0", home: { name: "Vencedor R32-0", badge: "", score: null }, away: { name: "Vencedor R32-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
-    { id: "r16-1", home: { name: "Vencedor R32-2", badge: "", score: null }, away: { name: "Vencedor R32-3", badge: "", score: null }, status: "scheduled", match_time: "", slot: 1 },
-    { id: "r16-2", home: { name: "Vencedor R32-4", badge: "", score: null }, away: { name: "Vencedor R32-5", badge: "", score: null }, status: "scheduled", match_time: "", slot: 2 },
-    { id: "r16-3", home: { name: "Vencedor R32-6", badge: "", score: null }, away: { name: "Vencedor R32-7", badge: "", score: null }, status: "scheduled", match_time: "", slot: 3 },
-    { id: "r16-4", home: { name: "Vencedor R32-8", badge: "", score: null }, away: { name: "Vencedor R32-9", badge: "", score: null }, status: "scheduled", match_time: "", slot: 4 },
-    { id: "r16-5", home: { name: "Vencedor R32-10", badge: "", score: null }, away: { name: "Vencedor R32-11", badge: "", score: null }, status: "scheduled", match_time: "", slot: 5 },
-    { id: "r16-6", home: { name: "Vencedor R32-12", badge: "", score: null }, away: { name: "Vencedor R32-13", badge: "", score: null }, status: "scheduled", match_time: "", slot: 6 },
-    { id: "r16-7", home: { name: "Vencedor R32-14", badge: "", score: null }, away: { name: "Vencedor R32-15", badge: "", score: null }, status: "scheduled", match_time: "", slot: 7 },
+    {
+      id: "r16-0",
+      home: { name: "Vencedor R32-0", badge: "", score: null },
+      away: { name: "Vencedor R32-1", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 0,
+    },
+    {
+      id: "r16-1",
+      home: { name: "Vencedor R32-2", badge: "", score: null },
+      away: { name: "Vencedor R32-3", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 1,
+    },
+    {
+      id: "r16-2",
+      home: { name: "Vencedor R32-4", badge: "", score: null },
+      away: { name: "Vencedor R32-5", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 2,
+    },
+    {
+      id: "r16-3",
+      home: { name: "Vencedor R32-6", badge: "", score: null },
+      away: { name: "Vencedor R32-7", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 3,
+    },
+    {
+      id: "r16-4",
+      home: { name: "Vencedor R32-8", badge: "", score: null },
+      away: { name: "Vencedor R32-9", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 4,
+    },
+    {
+      id: "r16-5",
+      home: { name: "Vencedor R32-10", badge: "", score: null },
+      away: { name: "Vencedor R32-11", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 5,
+    },
+    {
+      id: "r16-6",
+      home: { name: "Vencedor R32-12", badge: "", score: null },
+      away: { name: "Vencedor R32-13", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 6,
+    },
+    {
+      id: "r16-7",
+      home: { name: "Vencedor R32-14", badge: "", score: null },
+      away: { name: "Vencedor R32-15", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 7,
+    },
   ]
 
   const qfMatches: BracketMatch[] = [
-    { id: "qf-0", home: { name: "Vencedor R16-0", badge: "", score: null }, away: { name: "Vencedor R16-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
-    { id: "qf-1", home: { name: "Vencedor R16-2", badge: "", score: null }, away: { name: "Vencedor R16-3", badge: "", score: null }, status: "scheduled", match_time: "", slot: 1 },
-    { id: "qf-2", home: { name: "Vencedor R16-4", badge: "", score: null }, away: { name: "Vencedor R16-5", badge: "", score: null }, status: "scheduled", match_time: "", slot: 2 },
-    { id: "qf-3", home: { name: "Vencedor R16-6", badge: "", score: null }, away: { name: "Vencedor R16-7", badge: "", score: null }, status: "scheduled", match_time: "", slot: 3 },
+    {
+      id: "qf-0",
+      home: { name: "Vencedor R16-0", badge: "", score: null },
+      away: { name: "Vencedor R16-1", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 0,
+    },
+    {
+      id: "qf-1",
+      home: { name: "Vencedor R16-2", badge: "", score: null },
+      away: { name: "Vencedor R16-3", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 1,
+    },
+    {
+      id: "qf-2",
+      home: { name: "Vencedor R16-4", badge: "", score: null },
+      away: { name: "Vencedor R16-5", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 2,
+    },
+    {
+      id: "qf-3",
+      home: { name: "Vencedor R16-6", badge: "", score: null },
+      away: { name: "Vencedor R16-7", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 3,
+    },
   ]
 
   const sfMatches: BracketMatch[] = [
-    { id: "sf-0", home: { name: "Vencedor QF-0", badge: "", score: null }, away: { name: "Vencedor QF-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
-    { id: "sf-1", home: { name: "Vencedor QF-2", badge: "", score: null }, away: { name: "Vencedor QF-3", badge: "", score: null }, status: "scheduled", match_time: "", slot: 1 },
+    {
+      id: "sf-0",
+      home: { name: "Vencedor QF-0", badge: "", score: null },
+      away: { name: "Vencedor QF-1", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 0,
+    },
+    {
+      id: "sf-1",
+      home: { name: "Vencedor QF-2", badge: "", score: null },
+      away: { name: "Vencedor QF-3", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 1,
+    },
   ]
 
   const finalMatch: BracketMatch[] = [
-    { id: "final", home: { name: "Vencedor SF-0", badge: "", score: null }, away: { name: "Vencedor SF-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
+    {
+      id: "final",
+      home: { name: "Vencedor SF-0", badge: "", score: null },
+      away: { name: "Vencedor SF-1", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 0,
+    },
   ]
 
   const thirdMatch: BracketMatch[] = [
-    { id: "third", home: { name: "Perdedor SF-0", badge: "", score: null }, away: { name: "Perdedor SF-1", badge: "", score: null }, status: "scheduled", match_time: "", slot: 0 },
+    {
+      id: "third",
+      home: { name: "Perdedor SF-0", badge: "", score: null },
+      away: { name: "Perdedor SF-1", badge: "", score: null },
+      status: "scheduled",
+      match_time: "",
+      slot: 0,
+    },
   ]
 
   return {
@@ -425,9 +653,21 @@ export function KnockoutBracketSection() {
   }
 
   const template = generateKnockoutTemplate()
-  const rounds = data ? { ...template, ...data } : template
+  const rounds: BracketRounds = data
+    ? {
+        r32: data.r32?.length ? data.r32 : template.r32,
+        r16: data.r16?.length ? data.r16 : template.r16,
+        qf: data.qf?.length ? data.qf : template.qf,
+        sf: data.sf?.length ? data.sf : template.sf,
+        final: data.final?.length ? data.final : template.final,
+        third: data.third?.length ? data.third : template.third,
+      }
+    : template
 
-  const hasRealData = data && (data.r32.length > 0 || data.r16.length > 0)
+  const hasRealData =
+    data &&
+    (data.r32.some((m) => m.home.name && !m.home.name.includes("Grupo")) ||
+      data.r16.some((m) => m.home.name && !m.home.name.includes("Vencedor")))
 
   const { left: leftRounds, right: rightRounds } = splitRounds(rounds)
 
@@ -500,11 +740,29 @@ export function KnockoutBracketSection() {
 
             <g transform={`translate(0, ${Y_OFFSET})`}>
               {/* ---- Left side connectors ---- */}
-              <Connectors
-                side="left"
-                rounds={leftRounds}
-                roundKeys={LEFT_ROUNDS}
-                getX={leftColX}
+              <ConnectorLayer
+                fromMatches={leftRounds.r32}
+                toMatches={leftRounds.r16}
+                fromDepth={ROUND_DEPTH.r32}
+                toDepth={ROUND_DEPTH.r16}
+                fromX={leftColX(0)}
+                toX={leftColX(1)}
+              />
+              <ConnectorLayer
+                fromMatches={leftRounds.r16}
+                toMatches={leftRounds.qf}
+                fromDepth={ROUND_DEPTH.r16}
+                toDepth={ROUND_DEPTH.qf}
+                fromX={leftColX(1)}
+                toX={leftColX(2)}
+              />
+              <ConnectorLayer
+                fromMatches={leftRounds.qf}
+                toMatches={leftRounds.sf}
+                fromDepth={ROUND_DEPTH.qf}
+                toDepth={ROUND_DEPTH.sf}
+                fromX={leftColX(2)}
+                toX={leftColX(3)}
               />
 
               {/* ---- Left side match cards ---- */}
@@ -522,11 +780,29 @@ export function KnockoutBracketSection() {
               })}
 
               {/* ---- Right side connectors ---- */}
-              <Connectors
-                side="right"
-                rounds={rightRounds}
-                roundKeys={RIGHT_ROUNDS}
-                getX={rightColX}
+              <ConnectorLayer
+                fromMatches={rightRounds.sf}
+                toMatches={rightRounds.qf}
+                fromDepth={ROUND_DEPTH.sf}
+                toDepth={ROUND_DEPTH.qf}
+                fromX={rightColX(0)}
+                toX={rightColX(1)}
+              />
+              <ConnectorLayer
+                fromMatches={rightRounds.qf}
+                toMatches={rightRounds.r16}
+                fromDepth={ROUND_DEPTH.qf}
+                toDepth={ROUND_DEPTH.r16}
+                fromX={rightColX(1)}
+                toX={rightColX(2)}
+              />
+              <ConnectorLayer
+                fromMatches={rightRounds.r16}
+                toMatches={rightRounds.r32}
+                fromDepth={ROUND_DEPTH.r16}
+                toDepth={ROUND_DEPTH.r32}
+                fromX={rightColX(2)}
+                toX={rightColX(3)}
               />
 
               {/* ---- Right side match cards ---- */}
@@ -558,11 +834,7 @@ export function KnockoutBracketSection() {
               />
 
               {/* ---- Final card ---- */}
-              <MatchCardSVG
-                x={cx}
-                y={cy}
-                match={rounds.final?.[0] ?? null}
-              />
+              <MatchCardSVG x={cx} y={cy} match={rounds.final?.[0] ?? null} />
 
               {/* ---- 3º lugar ---- */}
               {rounds.third?.[0] && (

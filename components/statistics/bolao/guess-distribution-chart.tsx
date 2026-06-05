@@ -13,7 +13,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { GuessDistribution } from "@/lib/types"
 
-export function GuessDistributionChart({ data }: { data: GuessDistribution[] }) {
+export function GuessDistributionChart({
+  data,
+}: {
+  data: GuessDistribution[]
+}) {
   if (!data.length) {
     return (
       <Card className="border-slate-800/80 bg-slate-900/60">
@@ -41,7 +45,11 @@ export function GuessDistributionChart({ data }: { data: GuessDistribution[] }) 
             margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
             barSize={28}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#1e293b"
+              vertical={false}
+            />
             <XAxis
               dataKey="score"
               tick={{ fill: "#64748b", fontSize: 11 }}

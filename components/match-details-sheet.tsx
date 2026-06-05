@@ -202,7 +202,12 @@ function FormSection({
     if (!available || !form) return null
     const homeEvents = extractArray(form.home, ["schedule", "events"])
     const awayEvents = extractArray(form.away, ["schedule", "events"])
-    return computeFormProbability(match.home_team, homeEvents, match.away_team, awayEvents)
+    return computeFormProbability(
+      match.home_team,
+      homeEvents,
+      match.away_team,
+      awayEvents
+    )
   }, [available, form, match.home_team, match.away_team])
 
   return (
@@ -248,9 +253,9 @@ function FormProbabilityBar({
   return (
     <div className="rounded-lg border border-slate-800/70 bg-slate-900/60 p-3">
       <div className="mb-2 flex items-center justify-between text-[11px] font-black text-slate-300">
-        <span className="truncate max-w-[35%]">{homeTeam}</span>
+        <span className="max-w-[35%] truncate">{homeTeam}</span>
         <span className="text-slate-500">Probabilidade</span>
-        <span className="truncate max-w-[35%] text-right">{awayTeam}</span>
+        <span className="max-w-[35%] truncate text-right">{awayTeam}</span>
       </div>
       <div className="flex h-5 overflow-hidden rounded-full">
         <div
@@ -355,7 +360,7 @@ function LineupsSection({
     <Section icon={Shirt} title="Escalações e formação" available={available}>
       {available ? (
         <div className="overflow-hidden rounded-xl border border-green-900/40 bg-green-950/30">
-          <div className="grid min-h-80 grid-cols-1 sm:grid-cols-2 gap-px bg-green-900/30 p-px">
+          <div className="grid min-h-80 grid-cols-1 gap-px bg-green-900/30 p-px sm:grid-cols-2">
             <PitchColumn team={match.home_team} items={lineups.slice(0, 11)} />
             <PitchColumn team={match.away_team} items={lineups.slice(11, 22)} />
           </div>
@@ -489,7 +494,9 @@ function EventsSection({ details }: { details: MatchDetails }) {
 }
 
 function SourceStatusSection({ details }: { details: MatchDetails }) {
-  const statuses = (details.source_status ?? []).filter((s) => s.section !== "odds")
+  const statuses = (details.source_status ?? []).filter(
+    (s) => s.section !== "odds"
+  )
 
   return (
     <div className={SECTION_CLASS}>

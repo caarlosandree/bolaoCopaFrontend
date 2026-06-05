@@ -13,13 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { UserEvolution } from "@/lib/types"
 
-const LINE_COLORS = [
-  "#D91E4E",
-  "#FF6B00",
-  "#25D366",
-  "#9C27B0",
-  "#3B82F6",
-]
+const LINE_COLORS = ["#D91E4E", "#FF6B00", "#25D366", "#9C27B0", "#3B82F6"]
 
 type ChartRow = Record<string, number | string>
 
@@ -60,7 +54,10 @@ export function PointsEvolutionChart({ data }: { data: UserEvolution[] }) {
       </CardHeader>
       <CardContent className="p-4">
         <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+          <LineChart
+            data={chartData}
+            margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
             <XAxis
               dataKey="round"

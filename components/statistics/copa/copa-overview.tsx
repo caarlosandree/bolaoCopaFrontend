@@ -20,15 +20,21 @@ function StatCard({
   accent?: string
 }) {
   return (
-    <Card className={`border-slate-800/80 bg-slate-900/60 backdrop-blur-md ${accent ?? ""}`}>
+    <Card
+      className={`border-slate-800/80 bg-slate-900/60 backdrop-blur-md ${accent ?? ""}`}
+    >
       <CardContent className="flex items-start gap-4 p-5">
         <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700/60 bg-slate-800/80">
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">{label}</p>
+          <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+            {label}
+          </p>
           <p className="mt-1 truncate text-xl font-black text-white">{value}</p>
-          {sub && <p className="mt-0.5 truncate text-xs text-slate-400">{sub}</p>}
+          {sub && (
+            <p className="mt-0.5 truncate text-xs text-slate-400">{sub}</p>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -101,7 +107,9 @@ export function CopaOverviewSection() {
             ? `${data.biggest_win.home_team} ${data.biggest_win.home_score}×${data.biggest_win.away_score} ${data.biggest_win.away_team}`
             : "—"
         }
-        sub={data.biggest_win ? formatDate(data.biggest_win.match_time) : undefined}
+        sub={
+          data.biggest_win ? formatDate(data.biggest_win.match_time) : undefined
+        }
       />
 
       <StatCard
