@@ -17,6 +17,7 @@ import { getActiveRound, saveGuess } from "@/lib/api"
 import { isLoggedIn } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import type { Match, Round } from "@/lib/types"
+import { TeamFlag } from "@/components/ui/team-flag"
 
 type GuessState = {
   homeGuess: string
@@ -102,7 +103,7 @@ export default function DashboardPage() {
   function isLocked(match: Match): boolean {
     if (match.status !== "scheduled") return true
     const diff = new Date(match.match_time).getTime() - currentTime.getTime()
-    return diff <= 5 * 60 * 1000
+    return diff <= 10 * 60 * 1000
   }
 
   function formatCountdown(matchTime: string): string {
@@ -166,127 +167,136 @@ export default function DashboardPage() {
               return (
                 <Card
                   key={match.id}
-                  className={`relative overflow-hidden bg-gradient-to-r from-slate-900/90 to-slate-950 border transition-all duration-300 ${
+                  className={`relative overflow-hidden bg-gradient-to-r from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-md border transition-all duration-300 ${
                     locked
-                      ? "border-slate-800/60"
+                      ? "border-slate-800/40 opacity-95"
                       : warning
-                        ? "border-amber-500/50 shadow-md shadow-amber-500/5"
-                        : "border-slate-800 hover:border-nina-red/30"
+                        ? "border-amber-500/40 shadow-lg shadow-amber-500/5 animate-pulse-slow"
+                        : "border-slate-800/80 hover:border-nina-red/40 hover:shadow-xl hover:shadow-nina-red/5"
                   }`}
                 >
+                  {/* Linha indicadora premium no topo do card */}
                   <div
-                    className={`h-[3px] w-full absolute top-0 left-0 ${
+                    className={`h-[3px] w-full absolute top-0 left-0 transition-colors duration-300 ${
                       match.status === "finished"
-                        ? "bg-slate-700"
+                        ? "bg-slate-800"
                         : locked
-                          ? "bg-red-500/60"
+                          ? "bg-red-500/40"
                           : warning
-                            ? "bg-amber-400 animate-pulse"
-                            : "bg-nina-red/50"
+                            ? "bg-gradient-to-r from-amber-500 to-orange-500 animate-pulse"
+                            : "bg-gradient-to-r from-nina-red to-nina-orange"
                     }`}
                   />
 
-                  <CardContent className="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex flex-row md:flex-col items-center md:items-start justify-between md:justify-center gap-1.5 border-b border-slate-800/50 md:border-b-0 pb-3 md:pb-0 md:min-w-[140px]">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-                        <Calendar className="h-3.5 w-3.5" />
+                  <CardContent className="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
+                    {/* Data / Status do Jogo */}
+                    <div className="flex flex-row md:flex-col items-center md:items-start justify-between md:justify-center gap-2 border-b border-slate-800/50 md:border-b-0 pb-3 md:pb-0 md:min-w-[150px]">
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
                         {formatMatchDate(match.match_time)}
                       </div>
 
                       {match.status === "finished" ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-slate-800 text-slate-300 rounded-full px-2.5 py-0.5 mt-1 border border-slate-700/50">
-                          <CheckCircle2 className="h-3 w-3 text-slate-400" />
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold bg-slate-900/60 text-slate-300 rounded-full px-3 py-1 border border-slate-800/80">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
                           Finalizado
                         </span>
                       ) : locked ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-red-950/40 text-red-400 rounded-full px-2.5 py-0.5 mt-1 border border-red-900/30">
-                          <Lock className="h-3 w-3" />
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold bg-red-950/30 text-red-400 rounded-full px-3 py-1 border border-red-900/20">
+                          <Lock className="h-3.5 w-3.5 text-red-500" />
                           Bloqueado
                         </span>
                       ) : (
                         <span
-                          className={`inline-flex items-center gap-1 text-[11px] font-bold rounded-full px-2.5 py-0.5 mt-1 border ${
+                          className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold rounded-full px-3 py-1 border ${
                             warning
-                              ? "bg-amber-950/55 text-amber-400 border-amber-900/40 animate-pulse"
+                              ? "bg-amber-950/40 text-amber-400 border-amber-900/40 animate-pulse"
                               : "bg-nina-wine/20 text-nina-red border-nina-wine/30"
                           }`}
                         >
-                          <Clock className="h-3 w-3" />
+                          <Clock className="h-3.5 w-3.5" />
                           Fecha em {formatCountdown(match.match_time)}
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-center justify-center flex-1 gap-4 md:gap-8 py-2">
-                      <div className="flex items-center justify-end gap-3 flex-1">
-                        <span className="text-sm md:text-base font-bold text-slate-200 truncate max-w-[90px] md:max-w-none">
+                    {/* Placar centralizado */}
+                    <div className="flex items-center justify-between flex-1 gap-3 md:gap-6 py-1 w-full">
+                      {/* Mandante */}
+                      <div className="flex items-center justify-end gap-2.5 flex-1 min-w-0">
+                        <span className="text-sm md:text-base font-extrabold text-white truncate text-right">
                           {match.home_team}
                         </span>
-                        <div className="h-8 w-8 rounded-full bg-nina-wine/30 border border-nina-wine/50 flex items-center justify-center text-[10px] font-black text-slate-200">
-                          {match.home_team.substring(0, 2).toUpperCase()}
-                        </div>
+                        <TeamFlag
+                          teamName={match.home_team}
+                          className="h-8 w-8 md:h-10 md:w-10 border border-white/10 shadow-lg"
+                        />
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      {/* Inputs de Gols */}
+                      <div className="flex items-center gap-1.5 bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800/80 shadow-inner flex-shrink-0">
                         <Input
                           type="text"
                           maxLength={2}
                           disabled={locked}
                           value={match.status === "finished" ? String(match.home_score ?? "-") : g.homeGuess}
                           onChange={(e) => handleInputChange(match.id, "homeGuess", e.target.value)}
-                          className={`h-11 w-11 md:h-12 md:w-12 text-center text-lg font-black p-0 border rounded-lg transition-all ${
+                          className={`h-9 w-9 md:h-11 md:w-11 text-center text-base md:text-lg font-black p-0 border-0 rounded-xl transition-all ${
                             locked
-                              ? "bg-slate-950 text-slate-400 border-slate-800 cursor-not-allowed opacity-60"
-                              : "bg-slate-900 text-white border-slate-700 hover:border-nina-red/50 focus:border-nina-red"
+                              ? "bg-transparent text-slate-400 cursor-not-allowed opacity-60"
+                              : "bg-slate-900 text-white hover:bg-slate-850 focus:bg-slate-900 focus:ring-1 focus:ring-nina-red/50"
                           }`}
                           placeholder="-"
                         />
-                        <span className="text-slate-600 font-extrabold text-sm px-0.5">x</span>
+                        <span className="text-slate-600 font-black text-xs md:text-sm select-none px-0.5">x</span>
                         <Input
                           type="text"
                           maxLength={2}
                           disabled={locked}
                           value={match.status === "finished" ? String(match.away_score ?? "-") : g.awayGuess}
                           onChange={(e) => handleInputChange(match.id, "awayGuess", e.target.value)}
-                          className={`h-11 w-11 md:h-12 md:w-12 text-center text-lg font-black p-0 border rounded-lg transition-all ${
+                          className={`h-9 w-9 md:h-11 md:w-11 text-center text-base md:text-lg font-black p-0 border-0 rounded-xl transition-all ${
                             locked
-                              ? "bg-slate-950 text-slate-400 border-slate-800 cursor-not-allowed opacity-60"
-                              : "bg-slate-900 text-white border-slate-700 hover:border-nina-red/50 focus:border-nina-red"
+                              ? "bg-transparent text-slate-400 cursor-not-allowed opacity-60"
+                              : "bg-slate-900 text-white hover:bg-slate-850 focus:bg-slate-900 focus:ring-1 focus:ring-nina-red/50"
                           }`}
                           placeholder="-"
                         />
                       </div>
 
-                      <div className="flex items-center justify-start gap-3 flex-1">
-                        <div className="h-8 w-8 rounded-full bg-nina-wine/30 border border-nina-wine/50 flex items-center justify-center text-[10px] font-black text-slate-200">
-                          {match.away_team.substring(0, 2).toUpperCase()}
-                        </div>
-                        <span className="text-sm md:text-base font-bold text-slate-200 truncate max-w-[90px] md:max-w-none">
+                      {/* Visitante */}
+                      <div className="flex items-center justify-start gap-2.5 flex-1 min-w-0">
+                        <TeamFlag
+                          teamName={match.away_team}
+                          className="h-8 w-8 md:h-10 md:w-10 border border-white/10 shadow-lg"
+                        />
+                        <span className="text-sm md:text-base font-extrabold text-white truncate text-left">
                           {match.away_team}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-center md:min-w-[120px]">
+                    {/* Ação de Salvar / Pontuação obtida */}
+                    <div className="flex items-center justify-center md:min-w-[130px] w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t border-slate-850 md:border-t-0">
                       {match.status === "finished" ? (
-                        <div className="text-center bg-nina-wine/20 border border-nina-wine/30 px-4 py-2 rounded-xl">
+                        <div className="text-center bg-gradient-to-br from-nina-wine/20 to-nina-wine/5 border border-nina-wine/30 px-4 py-1.5 rounded-xl w-full">
                           {match.user_guess?.points_earned !== undefined ? (
                             <>
-                              <span className="text-[10px] uppercase font-bold text-nina-orange block tracking-wider">Pontos</span>
-                              <span className="text-lg font-extrabold text-nina-red">
+                              <span className="text-[9px] uppercase font-black text-nina-orange block tracking-wider leading-none mb-0.5">Pontos</span>
+                              <span className="text-base font-black text-white">
                                 +{match.user_guess.points_earned} pts
                               </span>
                             </>
                           ) : (
-                            <span className="text-xs text-slate-400">Sem palpite</span>
+                            <span className="text-xs text-slate-400 font-bold">Sem palpite</span>
                           )}
                         </div>
                       ) : locked ? (
-                        <div className="text-center text-slate-500 border border-slate-800/60 bg-slate-900/20 px-4 py-2.5 rounded-xl w-full">
-                          <span className="text-[10px] uppercase font-bold block">Fechado</span>
-                          <span className="text-xs font-semibold text-slate-400">
+                        <div className="text-center text-slate-400 border border-slate-800/40 bg-slate-950/40 px-4 py-2 rounded-xl w-full">
+                          <span className="text-[9px] uppercase font-black block text-slate-500 tracking-wider leading-none mb-0.5">Fechado</span>
+                          <span className="text-xs font-bold text-slate-300">
                             {g.homeGuess || g.awayGuess
-                              ? `Palpite: ${g.homeGuess || 0}x${g.awayGuess || 0}`
+                              ? `Seu palpite: ${g.homeGuess || 0}x${g.awayGuess || 0}`
                               : "Sem palpite"}
                           </span>
                         </div>
@@ -296,8 +306,8 @@ export default function DashboardPage() {
                           disabled={g.saved || g.loading || !g.homeGuess || !g.awayGuess}
                           className={`w-full font-bold text-xs h-10 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                             g.saved
-                              ? "bg-slate-900 text-slate-400 border border-slate-800 hover:bg-slate-900 cursor-default"
-                              : "bg-gradient-to-r from-nina-red to-nina-orange hover:opacity-90 text-white shadow-lg shadow-nina-red/20 active:scale-95"
+                              ? "bg-slate-900/60 text-slate-400 border border-slate-800/80 hover:bg-slate-900/60 cursor-default"
+                              : "bg-gradient-to-r from-nina-red to-nina-orange hover:opacity-90 text-white shadow-lg shadow-nina-red/10 active:scale-95"
                           }`}
                         >
                           {g.loading ? (

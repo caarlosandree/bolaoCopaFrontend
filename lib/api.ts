@@ -1,8 +1,11 @@
 import { getToken } from "./auth"
 import type {
   ActiveRoundResponse,
+  AdminMatch,
   AuthResponse,
   RankingEntry,
+  SyncResultsResult,
+  SyncScheduleResult,
 } from "./types"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:1323"
@@ -69,4 +72,17 @@ export function updateMatchScore(matchId: number, home_score: number, away_score
       body: JSON.stringify({ home_score, away_score }),
     },
   )
+}
+
+// Admin: sync manual
+export function syncSchedule() {
+  return request<SyncScheduleResult>("/api/admin/sync/schedule", { method: "POST" })
+}
+
+export function syncResults() {
+  return request<SyncResultsResult>("/api/admin/sync/results", { method: "POST" })
+}
+
+export function getRecentMatches(limit = 20) {
+  return request<AdminMatch[]>(`/api/admin/matches/recent?limit=${limit}`)
 }

@@ -54,3 +54,27 @@ export type RankingEntry = {
   email: string
   total_points: number
 }
+
+export type AdminMatch = {
+  id: number
+  home_team: string
+  away_team: string
+  home_score: number | null
+  away_score: number | null
+  status: "scheduled" | "ongoing" | "finished"
+  match_time: string
+  round_name: string
+  group_name: string | null
+}
+
+export type SyncScheduleResult = {
+  message: string
+  imported: number
+}
+
+export type SyncResultsResult = {
+  message: string
+  linked: number
+  scores_updated: number
+  scores_skipped: number
+}
