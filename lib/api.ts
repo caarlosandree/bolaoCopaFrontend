@@ -134,6 +134,22 @@ export function resetSchedule() {
   })
 }
 
+export function activateRound(roundId: number) {
+  return request<{ message: string; round_id: number }>(`/api/admin/rounds/${roundId}/activate`, {
+    method: "POST",
+  })
+}
+
+export function syncMatchDetails() {
+  return request<{
+    message: string
+    schedule_imported: number
+    details_updated: number
+    odds_linked: number
+    failures: string[]
+  }>("/api/admin/sync/match-details", { method: "POST" })
+}
+
 export function getRecentMatches(limit = 20) {
   return request<AdminMatch[]>(`/api/admin/matches/recent?limit=${limit}`)
 }

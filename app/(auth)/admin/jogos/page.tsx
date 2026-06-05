@@ -10,8 +10,9 @@ import {
   Calendar,
   Sparkles,
   Trash2,
+  Database,
 } from "lucide-react"
-import { syncSchedule, resetSchedule, getRecentMatches } from "@/lib/api"
+import { syncSchedule, resetSchedule, syncMatchDetails, getRecentMatches } from "@/lib/api"
 import type { AdminMatch } from "@/lib/types"
 import { TeamFlag } from "@/components/ui/team-flag"
 import { cn } from "@/lib/utils"
@@ -39,6 +40,7 @@ export default function JogosPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [syncingDetails, setSyncingDetails] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
 
   async function loadMatches() {
@@ -99,6 +101,22 @@ export default function JogosPage() {
       addLog(`[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`)
     } finally {
       setResetting(false)
+    }
+  }
+
+  async function handleSyncDetails() {
+    setSyncingDetails(true)
+    addLog("Iniciando sync de detalhes e odds das partidas...")
+    try {
+      const result = await syncMatchDetails()
+      addLog(`[OK] Detalhes: ${result.details_updated} atualizados, ${result.odds_linked} odds vinculadas.`)
+      if (result.failures?.length > 0) {
+        result.failures.forEach((f) => addLog(`[AVISO] ${f}`))
+      }
+    } catch (err) {
+      addLog(`[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`)
+    } finally {
+      setSyncingDetails(false)
     }
   }
 
@@ -246,9 +264,19 @@ export default function JogosPage() {
 
               <Button
                 variant="outline"
+                className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-800/60 bg-blue-950/30 text-xs font-bold text-blue-400 transition-all hover:border-blue-700/80 hover:bg-blue-950/60 hover:text-blue-300"
+                onClick={handleSyncDetails}
+                disabled={syncing || resetting || syncingDetails}
+              >
+                <Database className={cn("h-3.5 w-3.5", syncingDetails && "animate-pulse")} />
+                {syncingDetails ? "Sincronizando detalhes..." : "Sync Detalhes e Odds"}
+              </Button>
+
+              <Button
+                variant="outline"
                 className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-red-800/60 bg-red-950/30 text-xs font-bold text-red-400 transition-all hover:border-red-700/80 hover:bg-red-950/60 hover:text-red-300"
                 onClick={handleReset}
-                disabled={syncing || resetting}
+                disabled={syncing || resetting || syncingDetails}
               >
                 <Trash2 className={cn("h-3.5 w-3.5", resetting && "animate-pulse")} />
                 {resetting ? "Resetando..." : "Resetar e Reimportar"}

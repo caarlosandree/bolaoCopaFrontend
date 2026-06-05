@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import {
   Layers,
   PlayCircle,
@@ -11,6 +12,7 @@ import {
   Info,
 } from "lucide-react"
 import type { RoundSummary } from "@/lib/types"
+import { getRounds, activateRound } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const STATUS_CONFIG: Record<
@@ -35,7 +37,7 @@ const STATUS_CONFIG: Record<
   },
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | Date | null): string {
   if (!iso) return "—"
   return new Date(iso).toLocaleDateString("pt-BR", {
     day: "numeric",
@@ -48,27 +50,34 @@ function formatDate(iso: string | null): string {
 export default function RodasPage() {
   const [rounds, setRounds] = useState<RoundSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [activating, setActivating] = useState<number | null>(null)
+
+  const fetchRounds = useCallback(async () => {
+    try {
+      const data = await getRounds()
+      setRounds(data)
+    } catch (error) {
+      console.error("Erro ao buscar rodadas:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    async function fetchRounds() {
-      try {
-        const token = localStorage.getItem("token")
-        const response = await fetch("/api/admin/rounds", {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (response.ok) {
-          const data = await response.json()
-          setRounds(data)
-        }
-      } catch (error) {
-        console.error("Erro ao buscar rodadas:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchRounds()
-  }, [])
+  }, [fetchRounds])
+
+  async function handleActivate(roundId: number) {
+    setActivating(roundId)
+    try {
+      await activateRound(roundId)
+      await fetchRounds()
+    } catch (err) {
+      console.error("Erro ao ativar rodada:", err)
+    } finally {
+      setActivating(null)
+    }
+  }
 
   const activeRound = rounds.find((r) => r.status === "active")
 
@@ -84,7 +93,7 @@ export default function RodasPage() {
             Gerenciar Rodadas
           </h1>
           <p className="text-xs font-medium text-slate-400">
-            Visão geral das fases do bolão — gerenciadas automaticamente
+            Visão geral das fases do bolão
           </p>
         </div>
       </div>
@@ -96,9 +105,11 @@ export default function RodasPage() {
           <div className="space-y-1 text-xs text-slate-300">
             <p className="font-bold text-emerald-300">Gerenciamento automático</p>
             <p>
-              As rodadas são criadas automaticamente ao sincronizar o calendário.
-              Uma rodada é ativada <span className="font-bold text-white">24h antes do primeiro jogo</span> e
+              As rodadas são criadas automaticamente ao sincronizar o calendário via TheSportsDB.
+              Uma rodada é ativada automaticamente{" "}
+              <span className="font-bold text-white">24h antes do primeiro jogo</span> e
               finalizada quando <span className="font-bold text-white">todos os jogos terminarem</span>.
+              Use o botão <span className="font-bold text-white">Ativar</span> para liberar palpites antecipadamente.
             </p>
             {activeRound && (
               <p className="mt-2 font-bold text-white">
@@ -166,7 +177,7 @@ export default function RodasPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4 border-t border-slate-800/40 pt-3 sm:justify-end sm:border-0 sm:pt-0">
+                    <div className="flex items-center justify-between gap-3 border-t border-slate-800/40 pt-3 sm:justify-end sm:border-0 sm:pt-0">
                       <span
                         className={cn(
                           "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-black tracking-wider uppercase",
@@ -176,6 +187,17 @@ export default function RodasPage() {
                         {cfg.icon}
                         {cfg.label}
                       </span>
+
+                      {round.status === "upcoming" && (
+                        <Button
+                          size="sm"
+                          className="h-7 cursor-pointer rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 text-[10px] font-black tracking-wider text-emerald-400 uppercase transition-all hover:bg-emerald-500/20 hover:text-emerald-300"
+                          onClick={() => handleActivate(round.id)}
+                          disabled={activating === round.id}
+                        >
+                          {activating === round.id ? "..." : "Ativar"}
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
