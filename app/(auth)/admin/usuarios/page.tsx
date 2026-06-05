@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Users, Search, Trash2, User, ShieldCheck } from "lucide-react"
 import type { User as UserType } from "@/lib/types"
+import { getAdminUsers } from "@/lib/api"
 
 function initials(name: string): string {
   return name
@@ -37,11 +38,8 @@ export default function UsuariosPage() {
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const response = await fetch("/api/admin/users")
-        if (response.ok) {
-          const data = await response.json()
-          setUsers(data)
-        }
+        const data = await getAdminUsers()
+        setUsers(data)
       } catch (error) {
         console.error("Erro ao buscar usuários:", error)
       } finally {
