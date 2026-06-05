@@ -58,7 +58,7 @@ function SectionChip({
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 mb-2 mx-2",
         "text-[10px] font-bold uppercase tracking-wider border",
         variant === "admin"
-          ? "text-nina-purple/90 bg-nina-purple/10 border-nina-purple/25"
+          ? "text-nina-orange/90 bg-nina-orange/10 border-nina-orange/25"
           : "text-white/50 bg-white/5 border-white/10",
       )}
     >
@@ -83,20 +83,21 @@ export function AppSidebar() {
   return (
     <Sidebar
       collapsible="icon"
-      style={{ "--sidebar": "#3D0618", "--sidebar-border": "#6D0E2B66" } as React.CSSProperties}
+      style={{
+        "--sidebar": "#3D0618",
+        "--sidebar-border": "#6D0E2B66",
+        "--sidebar-accent": "rgba(255,255,255,0.12)",
+        "--sidebar-accent-foreground": "#ffffff",
+      } as React.CSSProperties}
       className="border-r border-nina-wine/40"
     >
       {/* Trigger na borda */}
       <CollapseHandle />
 
-      {/* Header — logo */}
+      {/* Header */}
       <SidebarHeader className="px-4 py-4 border-b border-nina-wine/40">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Ícone compacto sempre visível */}
-          <div className="h-8 w-8 rounded-lg bg-nina-wine/60 border border-nina-wine/40 flex items-center justify-center flex-shrink-0">
-            <span className="text-sm leading-none">⚽</span>
-          </div>
-          {/* Logo e subtítulo — ocultam ao colapsar */}
+          {/* Expandido: logo branca */}
           <div className="group-data-[collapsible=icon]:hidden flex flex-col min-w-0 overflow-hidden">
             <Image
               src="/logo-branca-nina.png"
@@ -106,22 +107,31 @@ export function AppSidebar() {
               priority
               className="h-auto w-auto object-contain"
             />
-            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest mt-0.5">
+            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest mt-1">
               Bolão da Copa 2026
             </span>
+          </div>
+          {/* Colapsado: logo ícone Nina */}
+          <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center">
+            <Image
+              src="/logo-nina.png"
+              alt="Nina"
+              width={32}
+              height={32}
+              priority
+              className="h-8 w-8 rounded-lg object-contain"
+            />
           </div>
         </div>
       </SidebarHeader>
 
       {/* Nav */}
       <SidebarContent className="px-2 py-4 gap-0">
-        {/* Seção Jogador */}
         <SidebarGroup className="p-0">
           <SectionChip label="Jogador" icon={User} variant="default" />
           <NavJogador />
         </SidebarGroup>
 
-        {/* Seção Admin */}
         {isAdmin && (
           <>
             <SidebarSeparator className="my-3 bg-nina-wine/40" />
