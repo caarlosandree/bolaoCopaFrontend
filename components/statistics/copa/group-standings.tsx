@@ -5,27 +5,8 @@ import { Loader2, Users } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 import { getGroupStandings } from "@/lib/api"
+import { TeamFlag } from "@/components/ui/team-flag"
 import type { Group } from "@/lib/types"
-
-function FlagOrBadge({ badge, name }: { badge: string; name: string }) {
-  if (badge) {
-    return (
-      <img
-        src={badge}
-        alt={name}
-        className="h-5 w-5 rounded-sm object-contain"
-        onError={(e) => {
-          ;(e.target as HTMLImageElement).style.display = "none"
-        }}
-      />
-    )
-  }
-  return (
-    <div className="flex h-5 w-5 items-center justify-center rounded-sm bg-slate-700 text-[9px] font-bold text-slate-300">
-      {name.slice(0, 2).toUpperCase()}
-    </div>
-  )
-}
 
 function GroupTable({ group }: { group: Group }) {
   return (
@@ -33,15 +14,25 @@ function GroupTable({ group }: { group: Group }) {
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-slate-800/60">
-            <th className="py-2 pr-2 text-left font-bold text-slate-400">Seleção</th>
+            <th className="py-2 pr-2 text-left font-bold text-slate-400">
+              Seleção
+            </th>
             <th className="w-8 py-2 text-center font-bold text-slate-400">J</th>
             <th className="w-8 py-2 text-center font-bold text-slate-400">V</th>
             <th className="w-8 py-2 text-center font-bold text-slate-400">E</th>
             <th className="w-8 py-2 text-center font-bold text-slate-400">D</th>
-            <th className="w-8 py-2 text-center font-bold text-slate-400">GM</th>
-            <th className="w-8 py-2 text-center font-bold text-slate-400">GS</th>
-            <th className="w-8 py-2 text-center font-bold text-slate-400">SG</th>
-            <th className="w-10 py-2 text-center font-black text-slate-200">PTS</th>
+            <th className="w-8 py-2 text-center font-bold text-slate-400">
+              GM
+            </th>
+            <th className="w-8 py-2 text-center font-bold text-slate-400">
+              GS
+            </th>
+            <th className="w-8 py-2 text-center font-bold text-slate-400">
+              SG
+            </th>
+            <th className="w-10 py-2 text-center font-black text-slate-200">
+              PTS
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -54,8 +45,13 @@ function GroupTable({ group }: { group: Group }) {
             >
               <td className="py-2.5 pr-2">
                 <div className="flex items-center gap-2">
-                  <FlagOrBadge badge={team.badge} name={team.name} />
-                  <span className={`font-semibold ${i < 2 ? "text-white" : "text-slate-300"}`}>
+                  <TeamFlag
+                    teamName={team.name}
+                    className="h-5 w-5 text-[8px]"
+                  />
+                  <span
+                    className={`font-semibold ${i < 2 ? "text-white" : "text-slate-300"}`}
+                  >
                     {team.name}
                   </span>
                   {i < 2 && (
@@ -65,16 +61,24 @@ function GroupTable({ group }: { group: Group }) {
                   )}
                 </div>
               </td>
-              <td className="py-2.5 text-center text-slate-300">{team.played}</td>
+              <td className="py-2.5 text-center text-slate-300">
+                {team.played}
+              </td>
               <td className="py-2.5 text-center text-slate-300">{team.won}</td>
-              <td className="py-2.5 text-center text-slate-300">{team.drawn}</td>
+              <td className="py-2.5 text-center text-slate-300">
+                {team.drawn}
+              </td>
               <td className="py-2.5 text-center text-slate-300">{team.lost}</td>
               <td className="py-2.5 text-center text-slate-300">{team.gf}</td>
               <td className="py-2.5 text-center text-slate-300">{team.ga}</td>
-              <td className={`py-2.5 text-center font-semibold ${team.gd > 0 ? "text-nina-green" : team.gd < 0 ? "text-nina-red" : "text-slate-300"}`}>
+              <td
+                className={`py-2.5 text-center font-semibold ${team.gd > 0 ? "text-nina-green" : team.gd < 0 ? "text-nina-red" : "text-slate-300"}`}
+              >
                 {team.gd > 0 ? `+${team.gd}` : team.gd}
               </td>
-              <td className="py-2.5 text-center font-black text-white">{team.points}</td>
+              <td className="py-2.5 text-center font-black text-white">
+                {team.points}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -124,7 +128,9 @@ export function GroupStandingsSection() {
               <Users className="h-4 w-4 text-slate-300" />
             </div>
             <div>
-              <CardTitle className="text-sm font-black text-white">{group.name}</CardTitle>
+              <CardTitle className="text-sm font-black text-white">
+                {group.name}
+              </CardTitle>
               <p className="text-[10px] font-medium text-slate-400">
                 Fase de Grupos · {current + 1} de {groups.length}
               </p>
@@ -157,7 +163,8 @@ export function GroupStandingsSection() {
       <CardContent className="p-4">
         <GroupTable group={group} />
         <p className="mt-3 text-[10px] text-slate-500">
-          As 2 primeiras seleções de cada grupo avançam ao mata-mata. Os 8 melhores terceiros colocados também se classificam.
+          As 2 primeiras seleções de cada grupo avançam ao mata-mata. Os 8
+          melhores terceiros colocados também se classificam.
         </p>
       </CardContent>
     </Card>
