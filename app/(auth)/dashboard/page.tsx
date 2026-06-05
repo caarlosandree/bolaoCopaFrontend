@@ -202,6 +202,46 @@ export default function DashboardPage() {
     })
   }
 
+  function getScoreReveal(pts: number): {
+    icon: string
+    message: string
+    colorClass: string
+    borderClass: string
+    bgClass: string
+  } {
+    if (pts === 5)
+      return {
+        icon: "🎯",
+        message: "Placar exato!",
+        colorClass: "text-green-300",
+        borderClass: "border-green-900/40",
+        bgClass: "bg-green-950/30",
+      }
+    if (pts === 3)
+      return {
+        icon: "✅",
+        message: "Vencedor e saldo corretos!",
+        colorClass: "text-blue-300",
+        borderClass: "border-blue-900/40",
+        bgClass: "bg-blue-950/30",
+      }
+    if (pts === 2)
+      return {
+        icon: "👍",
+        message: "Acertou o vencedor!",
+        colorClass: "text-amber-300",
+        borderClass: "border-amber-900/40",
+        bgClass: "bg-amber-950/30",
+      }
+    return {
+      icon: "❌",
+      message: "Resultado errado",
+      colorClass: "text-slate-400",
+      borderClass: "border-slate-800/40",
+      bgClass: "bg-slate-950/40",
+    }
+  }
+
   const palpitedCount = matches.filter(
     (m) => guesses[m.id]?.saved === true
   ).length
@@ -434,22 +474,44 @@ export default function DashboardPage() {
                         {/* Zona 3: Status / Auto-save */}
                         <div className="border-t border-slate-800/60 pt-3">
                           {match.status === "finished" ? (
-                            <div className="w-full rounded-xl border border-nina-wine/30 bg-gradient-to-br from-nina-wine/20 to-nina-wine/5 px-4 py-2 text-center">
-                              {match.user_guess?.points_earned !== undefined ? (
-                                <>
-                                  <span className="mb-0.5 block text-[9px] font-black tracking-wider text-nina-orange uppercase">
-                                    Pontos ganhos
-                                  </span>
-                                  <span className="text-lg font-black text-white">
-                                    +{match.user_guess.points_earned} pts
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-xs font-bold text-slate-500">
-                                  Sem palpite registrado
+                            match.user_guess?.points_earned !== undefined ? (
+                              (() => {
+                                const reveal = getScoreReveal(
+                                  match.user_guess.points_earned
+                                )
+                                return (
+                                  <div
+                                    className={`w-full rounded-xl border ${reveal.borderClass} ${reveal.bgClass} px-3 py-2`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex min-w-0 items-center gap-1.5">
+                                        <span className="flex-shrink-0 text-base">
+                                          {reveal.icon}
+                                        </span>
+                                        <span
+                                          className={`truncate text-xs font-bold ${reveal.colorClass}`}
+                                        >
+                                          {reveal.message}
+                                        </span>
+                                      </div>
+                                      <span className="flex-shrink-0 text-sm font-black text-white">
+                                        +{match.user_guess.points_earned} pts
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 text-[10px] text-slate-500">
+                                      Seu palpite: {match.user_guess.home_guess}{" "}
+                                      × {match.user_guess.away_guess}
+                                    </p>
+                                  </div>
+                                )
+                              })()
+                            ) : (
+                              <div className="w-full rounded-xl border border-slate-800/40 bg-slate-950/40 px-3 py-2 text-center">
+                                <span className="text-xs font-bold text-slate-600">
+                                  — Sem palpite registrado
                                 </span>
-                              )}
-                            </div>
+                              </div>
+                            )
                           ) : locked ? (
                             <div className="w-full rounded-xl border border-slate-800/40 bg-slate-950/40 px-4 py-2 text-center">
                               <span className="mb-0.5 block text-[9px] font-black tracking-wider text-slate-500 uppercase">
