@@ -11,8 +11,16 @@ import {
   Sparkles,
   Trash2,
   Database,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
-import { syncSchedule, resetSchedule, syncMatchDetails, getRecentMatches } from "@/lib/api"
+import {
+  syncSchedule,
+  resetSchedule,
+  syncMatchDetails,
+  getAdminMatches,
+  getSyncLogs,
+} from "@/lib/api"
 import type { AdminMatch } from "@/lib/types"
 import { TeamFlag } from "@/components/ui/team-flag"
 import { cn } from "@/lib/utils"
@@ -35,24 +43,87 @@ const STATUS_LABEL: Record<
   },
 }
 
+const PAGE_SIZE = 12
+
+function labelForSyncAction(action: string) {
+  switch (action) {
+    case "admin.sync.reset_schedule":
+      return "Reset e reimportação"
+    case "admin.sync.match_details":
+      return "Sync detalhes e odds"
+    default:
+      return "Sincronização de calendário"
+  }
+}
+
+function formatLogMetadata(metadata: Record<string, unknown>) {
+  const parts: string[] = []
+  if (typeof metadata.imported === "number") {
+    parts.push(`${metadata.imported} importadas`)
+  }
+  if (typeof metadata.details_updated === "number") {
+    parts.push(`${metadata.details_updated} detalhes`)
+  }
+  if (typeof metadata.odds_linked === "number") {
+    parts.push(`${metadata.odds_linked} odds`)
+  }
+  if (typeof metadata.failures === "number" && metadata.failures > 0) {
+    parts.push(`${metadata.failures} falhas`)
+  }
+  if (typeof metadata.error === "string") {
+    parts.push(metadata.error)
+  }
+  return parts.length > 0 ? ` — ${parts.join(", ")}` : ""
+}
+
 export default function JogosPage() {
   const [matches, setMatches] = useState<AdminMatch[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const [syncing, setSyncing] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [syncingDetails, setSyncingDetails] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
 
-  async function loadMatches() {
+  async function loadMatches(nextPage = page) {
+    setLoading(true)
     try {
-      const data = await getRecentMatches(30)
-      setMatches(data)
+      const data = await getAdminMatches(nextPage, PAGE_SIZE)
+      setMatches(data.items)
+      setPage(data.page)
+      setTotal(data.total)
+      setTotalPages(data.total_pages)
     } catch (err) {
       addLog(
         `[ERRO] Falha ao carregar partidas: ${err instanceof Error ? err.message : "erro desconhecido"}`
       )
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadLogs() {
+    try {
+      const data = await getSyncLogs("schedule")
+      setLogs(
+        data.map((entry) => {
+          const timestamp = new Date(entry.occurred_at).toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+          const metadata = formatLogMetadata(entry.metadata)
+          return `[${timestamp}] ${labelForSyncAction(entry.action)} — ${entry.outcome.toUpperCase()} (${entry.status_code})${metadata}`
+        })
+      )
+    } catch (err) {
+      addLog(
+        `[ERRO] Falha ao carregar histórico: ${err instanceof Error ? err.message : "erro desconhecido"}`
+      )
     }
   }
 
@@ -67,7 +138,13 @@ export default function JogosPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadMatches()
+    loadMatches(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadLogs()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -79,7 +156,8 @@ export default function JogosPage() {
       addLog(
         `[OK] ${result.message} — ${result.imported} partida(s) importada(s).`
       )
-      await loadMatches()
+      await loadMatches(page)
+      await loadLogs()
     } catch (err) {
       addLog(
         `[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`
@@ -96,7 +174,8 @@ export default function JogosPage() {
     try {
       const result = await resetSchedule()
       addLog(`[OK] ${result.message} — ${result.imported} partida(s) importada(s).`)
-      await loadMatches()
+      await loadMatches(1)
+      await loadLogs()
     } catch (err) {
       addLog(`[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`)
     } finally {
@@ -113,6 +192,7 @@ export default function JogosPage() {
       if (result.failures?.length > 0) {
         result.failures.forEach((f) => addLog(`[AVISO] ${f}`))
       }
+      await loadLogs()
     } catch (err) {
       addLog(`[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`)
     } finally {
@@ -143,7 +223,7 @@ export default function JogosPage() {
         <section className="space-y-3 lg:col-span-2">
           <h2 className="mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
             <span className="h-1.5 w-1.5 rounded-full bg-nina-orange" />
-            Últimas partidas cadastradas
+            Partidas cadastradas ({total})
           </h2>
 
           {loading ? (
@@ -232,6 +312,35 @@ export default function JogosPage() {
                   </Card>
                 )
               })}
+              <div className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-950/50 px-3 py-2 text-xs text-slate-400">
+                <span>
+                  Página {totalPages === 0 ? 0 : page} de {totalPages}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={page <= 1}
+                    aria-label="Página anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
+                    onClick={() =>
+                      setPage((current) => Math.min(totalPages, current + 1))
+                    }
+                    disabled={totalPages === 0 || page >= totalPages}
+                    aria-label="Próxima página"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </section>

@@ -1,11 +1,12 @@
 import { getToken } from "./auth"
 import type {
   ActiveRoundResponse,
-  AdminMatch,
+  AdminMatchesPage,
   AuthResponse,
   MatchDetails,
   RankingEntry,
   RoundSummary,
+  SyncLogEntry,
   SyncResultsResult,
   SyncScheduleResult,
   User,
@@ -150,8 +151,16 @@ export function syncMatchDetails() {
   }>("/api/admin/sync/match-details", { method: "POST" })
 }
 
-export function getRecentMatches(limit = 20) {
-  return request<AdminMatch[]>(`/api/admin/matches/recent?limit=${limit}`)
+export function getAdminMatches(page = 1, pageSize = 12) {
+  return request<AdminMatchesPage>(
+    `/api/admin/matches?page=${page}&page_size=${pageSize}`
+  )
+}
+
+export function getSyncLogs(scope: "schedule" | "results", limit = 30) {
+  return request<SyncLogEntry[]>(
+    `/api/admin/sync/logs?scope=${scope}&limit=${limit}`
+  )
 }
 
 // Perfil do usuário autenticado

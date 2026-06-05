@@ -125,6 +125,23 @@ export type AdminMatch = {
   group_name: string | null
 }
 
+export type AdminMatchesPage = {
+  items: AdminMatch[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+export type SyncLogEntry = {
+  occurred_at: string
+  action: string
+  status_code: number
+  outcome: string
+  path: string
+  metadata: Record<string, unknown>
+}
+
 export type SyncScheduleResult = {
   message: string
   imported: number

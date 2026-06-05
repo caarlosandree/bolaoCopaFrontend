@@ -9,28 +9,79 @@ import {
   Flame,
   Calendar,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
-import { syncResults, getRecentMatches } from "@/lib/api"
+import { syncResults, getAdminMatches, getSyncLogs } from "@/lib/api"
 import type { AdminMatch } from "@/lib/types"
 import { TeamFlag } from "@/components/ui/team-flag"
 import { cn } from "@/lib/utils"
 
+const PAGE_SIZE = 12
+
+function formatLogMetadata(metadata: Record<string, unknown>) {
+  const parts: string[] = []
+  if (typeof metadata.linked === "number") {
+    parts.push(`${metadata.linked} vinculados`)
+  }
+  if (typeof metadata.scores_updated === "number") {
+    parts.push(`${metadata.scores_updated} placares atualizados`)
+  }
+  if (typeof metadata.scores_skipped === "number") {
+    parts.push(`${metadata.scores_skipped} ignorados`)
+  }
+  if (typeof metadata.error === "string") {
+    parts.push(metadata.error)
+  }
+  return parts.length > 0 ? ` — ${parts.join(", ")}` : ""
+}
+
 export default function ResultadosPage() {
   const [matches, setMatches] = useState<AdminMatch[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const [syncing, setSyncing] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
 
-  async function loadMatches() {
+  async function loadMatches(nextPage = page) {
+    setLoading(true)
     try {
-      const data = await getRecentMatches(30)
-      setMatches(data)
+      const data = await getAdminMatches(nextPage, PAGE_SIZE)
+      setMatches(data.items)
+      setPage(data.page)
+      setTotal(data.total)
+      setTotalPages(data.total_pages)
     } catch (err) {
       addLog(
         `[ERRO] Falha ao carregar partidas: ${err instanceof Error ? err.message : "erro desconhecido"}`
       )
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadLogs() {
+    try {
+      const data = await getSyncLogs("results")
+      setLogs(
+        data.map((entry) => {
+          const timestamp = new Date(entry.occurred_at).toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+          const metadata = formatLogMetadata(entry.metadata)
+          return `[${timestamp}] Sincronização de resultados — ${entry.outcome.toUpperCase()} (${entry.status_code})${metadata}`
+        })
+      )
+    } catch (err) {
+      addLog(
+        `[ERRO] Falha ao carregar histórico: ${err instanceof Error ? err.message : "erro desconhecido"}`
+      )
     }
   }
 
@@ -45,7 +96,13 @@ export default function ResultadosPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadMatches()
+    loadMatches(page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadLogs()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -57,7 +114,8 @@ export default function ResultadosPage() {
       addLog(
         `[OK] ${result.message} — vinculados: ${result.linked}, placares atualizados: ${result.scores_updated}, ignorados: ${result.scores_skipped}.`
       )
-      await loadMatches()
+      await loadMatches(page)
+      await loadLogs()
     } catch (err) {
       addLog(
         `[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`
@@ -90,6 +148,11 @@ export default function ResultadosPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Lista de Partidas */}
         <section className="space-y-5 lg:col-span-2">
+          <h2 className="flex items-center gap-1.5 text-xs font-bold tracking-wider text-slate-400 uppercase">
+            <span className="h-1.5 w-1.5 rounded-full bg-nina-purple" />
+            Partidas cadastradas ({total})
+          </h2>
+
           {loading ? (
             <div className="flex h-48 items-center justify-center rounded-2xl border border-slate-800/40 bg-slate-900/20">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-nina-purple border-t-transparent" />
@@ -261,6 +324,40 @@ export default function ResultadosPage() {
                     importar.
                   </p>
                 </Card>
+              )}
+
+              {matches.length > 0 && (
+                <div className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-950/50 px-3 py-2 text-xs text-slate-400">
+                  <span>
+                    Página {totalPages === 0 ? 0 : page} de {totalPages}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      className="border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
+                      onClick={() =>
+                        setPage((current) => Math.max(1, current - 1))
+                      }
+                      disabled={page <= 1}
+                      aria-label="Página anterior"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      className="border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
+                      onClick={() =>
+                        setPage((current) => Math.min(totalPages, current + 1))
+                      }
+                      disabled={totalPages === 0 || page >= totalPages}
+                      aria-label="Próxima página"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               )}
             </>
           )}
