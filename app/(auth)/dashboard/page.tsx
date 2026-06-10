@@ -282,6 +282,14 @@ export default function DashboardPage() {
         borderClass: "border-amber-900/40",
         bgClass: "bg-amber-950/30",
       }
+    if (pts === 1)
+      return {
+        icon: "🤝",
+        message: "Acertou o empate!",
+        colorClass: "text-teal-300",
+        borderClass: "border-teal-900/40",
+        bgClass: "bg-teal-950/30",
+      }
     return {
       icon: "❌",
       message: "Resultado errado",

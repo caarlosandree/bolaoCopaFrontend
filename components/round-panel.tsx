@@ -29,6 +29,7 @@ const SCORING_RULES = [
   { icon: "🎯", label: "Placar exato", pts: 5, color: "text-green-400" },
   { icon: "✅", label: "Vencedor + saldo", pts: 3, color: "text-blue-400" },
   { icon: "👍", label: "Vencedor", pts: 2, color: "text-amber-400" },
+  { icon: "🤝", label: "Empate (não exato)", pts: 1, color: "text-teal-400" },
   { icon: "❌", label: "Resultado errado", pts: 0, color: "text-slate-500" },
 ] as const
 

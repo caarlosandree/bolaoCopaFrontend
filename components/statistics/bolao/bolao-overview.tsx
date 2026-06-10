@@ -54,7 +54,7 @@ export function BolaoOverviewSection({ data }: { data: BolaoOverview }) {
         icon={<TrendingUp className="h-5 w-5 text-nina-orange" />}
         label="Taxa de acerto"
         value={`${(data.hit_rate * 100).toFixed(1)}%`}
-        sub="palpites com pelo menos 2 pts"
+        sub="palpites com pelo menos 1 pt"
       />
       <StatCard
         icon={<Star className="h-5 w-5 text-amber-400" />}
