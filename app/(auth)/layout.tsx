@@ -4,7 +4,8 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/_sidebar/app-sidebar"
-import { isLoggedIn } from "@/lib/auth"
+import { isLoggedIn, getToken, setAuth } from "@/lib/auth"
+import { getMe } from "@/lib/api"
 
 export default function AuthLayout({
   children,
@@ -16,7 +17,18 @@ export default function AuthLayout({
   useEffect(() => {
     if (!isLoggedIn()) {
       router.replace("/login")
+      return
     }
+    // Sincroniza o usuário em cache com o servidor para não ficar com dados velhos
+    // (ex: avatar_url desatualizado após migração de armazenamento)
+    const token = getToken()
+    getMe()
+      .then((user) => {
+        if (token) setAuth(token, user)
+      })
+      .catch(() => {
+        // Silencia erros de rede — o cache existente é usado como fallback
+      })
   }, [router])
 
   return (

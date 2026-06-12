@@ -282,3 +282,35 @@ export type BolaoStats = {
   guess_distribution: GuessDistribution[]
   accuracy_ranking: AccuracyRow[]
 }
+
+export type MatchGuessEntry = {
+  user_id: number
+  name: string
+  avatar_url: string | null
+  home_guess: number
+  away_guess: number
+  points_earned: number | null
+}
+
+export type MatchGuessesStats = {
+  total: number
+  exact: number
+  partial: number
+  wrong: number
+}
+
+export type MatchGuessesSummary = {
+  id: number
+  home_team: string
+  away_team: string
+  home_score: number | null
+  away_score: number | null
+  status: "scheduled" | "ongoing" | "finished"
+  match_time: string
+}
+
+export type MatchGuessesResponse = {
+  match: MatchGuessesSummary
+  stats: MatchGuessesStats
+  guesses: MatchGuessEntry[]
+}

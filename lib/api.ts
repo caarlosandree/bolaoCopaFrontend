@@ -8,6 +8,7 @@ import type {
   CopaOverview,
   GroupStandings,
   MatchDetails,
+  MatchGuessesResponse,
   RankingEntry,
   RoundSummary,
   SyncLogEntry,
@@ -203,4 +204,8 @@ export function getBracket() {
 
 export function getBolaoStats() {
   return request<BolaoStats>("/api/statistics/bolao")
+}
+
+export function getMatchGuesses(matchId: number) {
+  return request<MatchGuessesResponse>(`/api/matches/${matchId}/guesses`)
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { Camera, Loader2 } from "lucide-react"
 import { uploadAvatar } from "@/lib/api"
@@ -24,6 +24,16 @@ export function AvatarUpload({ onSuccess, className }: AvatarUploadProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Rastreia o blob URL atual para revogá-lo apenas depois do próximo render
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+
+  // Quando blobUrl é limpo (null), o cleanup do efeito anterior revoga o URL antigo —
+  // isso garante que a revogação só acontece APÓS o React commitar o novo preview
+  useEffect(() => {
+    if (!blobUrl) return
+    return () => URL.revokeObjectURL(blobUrl)
+  }, [blobUrl])
+
   const currentAvatar = preview ?? DEFAULT_AVATAR
 
   function handleClick() {
@@ -44,13 +54,17 @@ export function AvatarUpload({ onSuccess, className }: AvatarUploadProps) {
 
     // Preview local imediato
     const objectUrl = URL.createObjectURL(file)
+    setBlobUrl(objectUrl)
     setPreview(objectUrl)
 
     try {
       const { avatar_url } = await uploadAvatar(file)
-      setPreview(avatar_url)
 
-      // Atualiza o usuário em localStorage
+      // Cache-busting: força o Next.js Image a buscar a versão recém-enviada
+      // (sem isso, o optimizer pode servir a versão cacheada da mesma URL)
+      setPreview(`${avatar_url}?t=${Date.now()}`)
+      setBlobUrl(null) // dispara a revogação do objectUrl via useEffect
+
       const token = getToken()
       if (user && token) {
         setAuth(token, { ...user, avatar_url })
@@ -59,13 +73,11 @@ export function AvatarUpload({ onSuccess, className }: AvatarUploadProps) {
       onSuccess?.(avatar_url)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao enviar imagem")
-      // Reverte para o avatar anterior
       setPreview(user?.avatar_url ?? null)
+      setBlobUrl(null)
     } finally {
       setLoading(false)
-      // Limpa o input para permitir reenvio do mesmo arquivo
       if (inputRef.current) inputRef.current.value = ""
-      URL.revokeObjectURL(objectUrl)
     }
   }
 
@@ -85,6 +97,7 @@ export function AvatarUpload({ onSuccess, className }: AvatarUploadProps) {
           fill
           sizes="96px"
           className="object-cover"
+          onError={() => setPreview(DEFAULT_AVATAR)}
         />
 
         {/* Overlay ao hover */}
