@@ -116,7 +116,7 @@ export function MatchDetailsSheet({ match }: MatchDetailsSheetProps) {
         <div className="space-y-4 p-4">
           <MatchHero match={match} mediaEvent={mediaEvent} />
 
-          {match.status === "ongoing" && match.stream_url && (
+          {match.stream_url && (
             <LiveStreamSection streamUrl={match.stream_url} />
           )}
 

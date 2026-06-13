@@ -46,9 +46,7 @@ function extractYouTubeVideoID(streamUrl: string): string | null {
 }
 
 function LiveStreamThumbnail({ matches }: { matches: Match[] }) {
-  const liveMatch = matches.find(
-    (m) => m.status === "ongoing" && m.stream_url
-  )
+  const liveMatch = matches.find((m) => m.stream_url)
   if (!liveMatch?.stream_url) return null
 
   const videoID = extractYouTubeVideoID(liveMatch.stream_url)
