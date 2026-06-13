@@ -9,6 +9,8 @@ import {
 } from "react"
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
   BarChart3,
   CalendarClock,
   CircleHelp,
@@ -39,6 +41,34 @@ type MatchDetailsSheetProps = {
 
 type LooseRecord = Record<string, unknown>
 type ResultCode = "W" | "D" | "L"
+
+type PlayerSlot = {
+  name: string
+  position: string
+  row: number
+  isSubstituted: boolean
+  substituteIn: string | null
+  substituteMinute: number | null
+  cameOn: boolean
+  replacedPlayer: string | null
+  cameOnMinute: number | null
+}
+
+type TeamLineup = {
+  coach: string | null
+  formation: string | null
+  starters: PlayerSlot[]
+  bench: PlayerSlot[]
+}
+
+type SubstitutionEvent = {
+  playerOut: string
+  playerIn: string
+  minute: number | null
+  teamName: string | null
+}
+
+const ROW_Y: Record<number, number> = { 3: 15, 2: 38, 1: 62, 0: 85 }
 
 const SECTION_CLASS =
   "rounded-xl border border-slate-800/70 bg-slate-950/40 p-3"
@@ -379,25 +409,37 @@ function LineupsSection({
   details: MatchDetails
   match: Match
 }) {
-  const lineups = extractArray(details.lineups, ["lookup", "lineup", "lineups"])
-  const available = dataAvailable(details.lineups) && lineups.length > 0
+  const lineupItems = extractArray(details.lineups, [
+    "lookup",
+    "lineup",
+    "lineups",
+  ])
+  const available = dataAvailable(details.lineups) && lineupItems.length > 0
 
-  const hasHomeFlag = lineups.some((p) => text(p, "strHome") !== null)
-  const homeItems = hasHomeFlag
-    ? lineups.filter((p) => text(p, "strHome") === "Yes")
-    : lineups.slice(0, 11)
-  const awayItems = hasHomeFlag
-    ? lineups.filter((p) => text(p, "strHome") === "No")
-    : lineups.slice(11, 22)
+  const eventItems = extractArray(details.events, [
+    "lookup",
+    "timeline",
+    "events",
+  ])
+  const subs = extractSubstitutions(eventItems)
+
+  const hasHomeFlag = lineupItems.some((p) => text(p, "strHome") !== null)
+  const homeRaw = hasHomeFlag
+    ? lineupItems.filter((p) => text(p, "strHome") === "Yes")
+    : lineupItems.slice(0, Math.ceil(lineupItems.length / 2))
+  const awayRaw = hasHomeFlag
+    ? lineupItems.filter((p) => text(p, "strHome") === "No")
+    : lineupItems.slice(Math.ceil(lineupItems.length / 2))
+
+  const homeLineup = buildTeamLineup(homeRaw, subs, match.home_team)
+  const awayLineup = buildTeamLineup(awayRaw, subs, match.away_team)
 
   return (
     <Section icon={Shirt} title="Escalações e formação" available={available}>
       {available ? (
-        <div className="overflow-hidden rounded-xl border border-green-900/40 bg-green-950/30">
-          <div className="grid min-h-80 grid-cols-1 gap-px bg-green-900/30 p-px sm:grid-cols-2">
-            <PitchColumn team={match.home_team} items={homeItems} />
-            <PitchColumn team={match.away_team} items={awayItems} />
-          </div>
+        <div className="grid grid-cols-2 gap-2">
+          <HalfPitch lineup={homeLineup} teamName={match.home_team} />
+          <HalfPitch lineup={awayLineup} teamName={match.away_team} />
         </div>
       ) : (
         <Unavailable detail={sourceMessage(details.lineups)} />
@@ -406,29 +448,176 @@ function LineupsSection({
   )
 }
 
-function PitchColumn({ team, items }: { team: string; items: LooseRecord[] }) {
+function HalfPitch({
+  lineup,
+  teamName,
+}: {
+  lineup: TeamLineup
+  teamName: string
+}) {
+  const byRow: Record<number, PlayerSlot[]> = { 0: [], 1: [], 2: [], 3: [] }
+  for (const player of lineup.starters) {
+    const bucket = byRow[player.row] ?? byRow[2]
+    bucket.push(player)
+  }
+
   return (
-    <div className="flex min-h-80 flex-col justify-around bg-[linear-gradient(0deg,rgba(22,101,52,.35)_1px,transparent_1px),linear-gradient(90deg,rgba(22,101,52,.35)_1px,transparent_1px)] bg-size-[24px_24px] p-3">
-      <p className="text-center text-[10px] font-black tracking-wider text-green-200 uppercase">
-        {team}
-      </p>
-      <div className="grid grid-cols-2 gap-2">
-        {items.map((item, index) => (
-          <div
-            key={`${team}-${index}`}
-            className="rounded-lg border border-green-800/50 bg-slate-950/70 px-2 py-1 text-center"
-          >
-            <p className="truncate text-[10px] font-bold text-white">
-              {text(item, "strPlayer") ??
-                text(item, "strPlayerName") ??
-                text(item, "player") ??
-                "Jogador"}
-            </p>
-            <p className="text-[9px] text-green-300/70">
-              {text(item, "strPosition") ?? text(item, "position") ?? "-"}
-            </p>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-1">
+        <p className="min-w-0 truncate text-[10px] font-black tracking-wider text-white uppercase">
+          {teamName}
+        </p>
+        {lineup.formation && (
+          <span className="flex-shrink-0 rounded bg-green-900/60 px-1.5 py-0.5 text-[9px] font-bold text-green-300">
+            {lineup.formation}
+          </span>
+        )}
+      </div>
+
+      <div
+        className="relative overflow-hidden rounded-lg bg-green-900"
+        style={{ aspectRatio: "3/4" }}
+      >
+        <PitchMarkings />
+
+        {([3, 2, 1, 0] as const).flatMap((rowNum) =>
+          (byRow[rowNum] ?? []).map((player, i, arr) => (
+            <PlayerToken
+              key={`${player.name}-${rowNum}-${i}`}
+              player={player}
+              x={((i + 1) / (arr.length + 1)) * 100}
+              y={ROW_Y[rowNum]}
+            />
+          ))
+        )}
+
+        {lineup.coach && (
+          <div className="absolute right-1 bottom-1 flex max-w-[55%] items-center gap-0.5 rounded bg-slate-900/80 px-1 py-0.5">
+            <Shirt className="h-2 w-2 shrink-0 text-slate-400" />
+            <span className="truncate text-[8px] text-slate-300">
+              {lineup.coach}
+            </span>
           </div>
-        ))}
+        )}
+      </div>
+
+      {lineup.bench.length > 0 && <BenchStrip players={lineup.bench} />}
+    </div>
+  )
+}
+
+function PitchMarkings() {
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      <div className="absolute inset-[5%] border border-white/20" />
+      <div className="absolute top-[5%] right-[5%] left-[5%] h-px bg-white/20" />
+      <div className="absolute top-0 left-1/2 h-[9%] w-[50%] -translate-x-1/2 rounded-b-full border-x border-t-0 border-b border-white/20" />
+      <div className="absolute right-[22%] bottom-[5%] left-[22%] h-[22%] border border-white/20" />
+      <div className="absolute right-[36%] bottom-[5%] left-[36%] h-[8%] border border-white/20" />
+      <div className="absolute bottom-[29%] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-white/30" />
+    </div>
+  )
+}
+
+function PlayerToken({
+  player,
+  x,
+  y,
+}: {
+  player: PlayerSlot
+  x: number
+  y: number
+}) {
+  const parts = player.name.trim().split(/\s+/)
+  const initials =
+    parts.length === 1
+      ? parts[0].slice(0, 2).toUpperCase()
+      : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+
+  const displayName = parts.length === 1 ? parts[0] : parts[parts.length - 1]
+
+  return (
+    <div
+      className="absolute -translate-x-1/2 -translate-y-1/2 text-center"
+      style={{ left: `${x}%`, top: `${y}%` }}
+    >
+      <div
+        className={cn(
+          "mx-auto flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-black text-white",
+          player.isSubstituted
+            ? "bg-red-700 ring-1 ring-red-400/70"
+            : player.cameOn
+              ? "bg-green-600 ring-1 ring-green-300/70"
+              : "bg-slate-800 ring-1 ring-white/25"
+        )}
+      >
+        {initials}
+      </div>
+
+      {player.isSubstituted && (
+        <div className="flex items-center justify-center gap-px">
+          <ArrowDown className="h-2 w-2 text-red-400" />
+          {player.substituteMinute !== null && (
+            <span className="text-[7px] font-bold text-red-400">
+              {player.substituteMinute}&apos;
+            </span>
+          )}
+        </div>
+      )}
+
+      {player.cameOn && (
+        <div className="flex items-center justify-center gap-px">
+          <ArrowUp className="h-2 w-2 text-green-400" />
+          {player.cameOnMinute !== null && (
+            <span className="text-[7px] font-bold text-green-400">
+              {player.cameOnMinute}&apos;
+            </span>
+          )}
+        </div>
+      )}
+
+      <p className="w-14 truncate overflow-hidden text-center text-[8px] leading-tight font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">
+        {displayName}
+      </p>
+    </div>
+  )
+}
+
+function BenchStrip({ players }: { players: PlayerSlot[] }) {
+  const sorted = [...players].sort(
+    (a, b) => Number(b.cameOn) - Number(a.cameOn)
+  )
+
+  return (
+    <div className="rounded-lg border border-slate-800/60 bg-slate-900/60 p-2">
+      <p className="mb-1.5 text-[9px] font-black tracking-wider text-slate-500 uppercase">
+        Reservas
+      </p>
+      <div className="flex flex-wrap gap-1">
+        {sorted.map((player, i) => {
+          const lastName = player.name.trim().split(/\s+/).pop() ?? player.name
+          return (
+            <div
+              key={`bench-${i}`}
+              className={cn(
+                "flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[9px] font-bold",
+                player.cameOn
+                  ? "border-green-900/50 bg-green-950/40 text-green-300"
+                  : "border-slate-800 bg-slate-900 text-slate-500"
+              )}
+            >
+              {player.cameOn && (
+                <ArrowUp className="h-2 w-2 shrink-0 text-green-400" />
+              )}
+              <span className="max-w-[72px] truncate">{lastName}</span>
+              {player.cameOn && player.cameOnMinute !== null && (
+                <span className="text-green-500">
+                  {player.cameOnMinute}&apos;
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -815,6 +1004,166 @@ function computeFormProbability(
     awayWin,
     matchCount: Math.min(homeResults.length, awayResults.length),
   }
+}
+
+function buildTeamLineup(
+  items: LooseRecord[],
+  subs: SubstitutionEvent[],
+  teamName: string
+): TeamLineup {
+  const coach =
+    items.map((item) => text(item, "strCoach")).find(Boolean) ?? null
+  const formation =
+    items.map((item) => text(item, "strFormation")).find(Boolean) ?? null
+
+  const hasSubField = items.some((item) => text(item, "strSubstitute") !== null)
+  const starters = (
+    hasSubField
+      ? items.filter((item) => text(item, "strSubstitute") !== "Yes")
+      : items.slice(0, 11)
+  ).slice(0, 11)
+  const bench = hasSubField
+    ? items.filter((item) => text(item, "strSubstitute") === "Yes")
+    : items.slice(11)
+
+  const starterSlots: PlayerSlot[] = starters.map((item) => {
+    const name =
+      text(item, "strPlayer") ??
+      text(item, "strPlayerName") ??
+      text(item, "player") ??
+      "Jogador"
+    const position = text(item, "strPosition") ?? text(item, "position") ?? ""
+    const subEvent = subs.find(
+      (s) =>
+        (s.teamName === null ||
+          normalize(s.teamName) === normalize(teamName)) &&
+        normalize(s.playerOut) === normalize(name)
+    )
+    return {
+      name,
+      position,
+      row: detectPositionRow(position),
+      isSubstituted: Boolean(subEvent),
+      substituteIn: subEvent?.playerIn ?? null,
+      substituteMinute: subEvent?.minute ?? null,
+      cameOn: false,
+      replacedPlayer: null,
+      cameOnMinute: null,
+    }
+  })
+
+  const benchSlots: PlayerSlot[] = bench.map((item) => {
+    const name =
+      text(item, "strPlayer") ??
+      text(item, "strPlayerName") ??
+      text(item, "player") ??
+      "Reserva"
+    const position = text(item, "strPosition") ?? text(item, "position") ?? ""
+    const subEvent = subs.find(
+      (s) =>
+        (s.teamName === null ||
+          normalize(s.teamName) === normalize(teamName)) &&
+        normalize(s.playerIn) === normalize(name)
+    )
+    return {
+      name,
+      position,
+      row: detectPositionRow(position),
+      isSubstituted: false,
+      substituteIn: null,
+      substituteMinute: null,
+      cameOn: Boolean(subEvent),
+      replacedPlayer: subEvent?.playerOut ?? null,
+      cameOnMinute: subEvent?.minute ?? null,
+    }
+  })
+
+  const missingBench = subs
+    .filter(
+      (s) =>
+        s.teamName === null || normalize(s.teamName) === normalize(teamName)
+    )
+    .filter(
+      (s) =>
+        !benchSlots.some((b) => normalize(b.name) === normalize(s.playerIn))
+    )
+    .map((s) => ({
+      name: s.playerIn,
+      position: "",
+      row: 2,
+      isSubstituted: false,
+      substituteIn: null,
+      substituteMinute: null,
+      cameOn: true,
+      replacedPlayer: s.playerOut,
+      cameOnMinute: s.minute,
+    }))
+
+  return {
+    coach,
+    formation,
+    starters: starterSlots,
+    bench: [...benchSlots, ...missingBench],
+  }
+}
+
+function extractSubstitutions(events: LooseRecord[]): SubstitutionEvent[] {
+  return events.flatMap((event) => {
+    const timeline = (text(event, "strTimeline") ?? "").toLowerCase()
+    const detail = (text(event, "strTimelineDetail") ?? "").toLowerCase()
+    if (!timeline.includes("sub") && !detail.includes("sub")) return []
+    const playerOut = text(event, "strPlayer")
+    const playerIn =
+      text(event, "strAssist") ??
+      text(event, "strPlayer2") ??
+      text(event, "substitute")
+    if (!playerOut || !playerIn) return []
+    const minuteRaw = text(event, "intTime") ?? text(event, "minute")
+    return [
+      {
+        playerOut,
+        playerIn,
+        minute: minuteRaw ? Number(minuteRaw) || null : null,
+        teamName: text(event, "strTeam"),
+      },
+    ]
+  })
+}
+
+function detectPositionRow(position: string): number {
+  const p = position.toLowerCase().trim()
+  if (!p) return 2
+  if (p === "gk" || p.startsWith("goal")) return 0
+  if (
+    p === "def" ||
+    p === "cb" ||
+    p === "lb" ||
+    p === "rb" ||
+    p === "lwb" ||
+    p === "rwb" ||
+    p === "sw" ||
+    p === "dc" ||
+    p === "dr" ||
+    p === "dl" ||
+    p.startsWith("defen") ||
+    p.includes("back")
+  )
+    return 1
+  if (
+    p === "fw" ||
+    p === "fwd" ||
+    p === "st" ||
+    p === "cf" ||
+    p === "lw" ||
+    p === "rw" ||
+    p === "ss" ||
+    p.startsWith("for") ||
+    p.includes("ward") ||
+    p.includes("attac") ||
+    p.includes("strik")
+  )
+    return 3
+  return 2
 }
 
 function LiveStreamSection({ streamUrl }: { streamUrl: string }) {
