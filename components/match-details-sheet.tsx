@@ -382,13 +382,21 @@ function LineupsSection({
   const lineups = extractArray(details.lineups, ["lookup", "lineup", "lineups"])
   const available = dataAvailable(details.lineups) && lineups.length > 0
 
+  const hasHomeFlag = lineups.some((p) => text(p, "strHome") !== null)
+  const homeItems = hasHomeFlag
+    ? lineups.filter((p) => text(p, "strHome") === "Yes")
+    : lineups.slice(0, 11)
+  const awayItems = hasHomeFlag
+    ? lineups.filter((p) => text(p, "strHome") === "No")
+    : lineups.slice(11, 22)
+
   return (
     <Section icon={Shirt} title="Escalações e formação" available={available}>
       {available ? (
         <div className="overflow-hidden rounded-xl border border-green-900/40 bg-green-950/30">
           <div className="grid min-h-80 grid-cols-1 gap-px bg-green-900/30 p-px sm:grid-cols-2">
-            <PitchColumn team={match.home_team} items={lineups.slice(0, 11)} />
-            <PitchColumn team={match.away_team} items={lineups.slice(11, 22)} />
+            <PitchColumn team={match.home_team} items={homeItems} />
+            <PitchColumn team={match.away_team} items={awayItems} />
           </div>
         </div>
       ) : (
