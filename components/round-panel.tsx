@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Trophy, Target, CheckCircle2 } from "lucide-react"
+import { Trophy, Target, CheckCircle2, PictureInPicture } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getRanking } from "@/lib/api"
 import { getUser } from "@/lib/auth"
@@ -32,6 +32,75 @@ const SCORING_RULES = [
   { icon: "🤝", label: "Empate (não exato)", pts: 1, color: "text-teal-400" },
   { icon: "❌", label: "Resultado errado", pts: 0, color: "text-slate-500" },
 ] as const
+
+function extractYouTubeVideoID(streamUrl: string): string | null {
+  try {
+    const url = new URL(streamUrl)
+    if (url.pathname.startsWith("/embed/")) {
+      return url.pathname.split("/embed/")[1]?.split("?")[0] ?? null
+    }
+    return url.searchParams.get("v")
+  } catch {
+    return null
+  }
+}
+
+function LiveStreamThumbnail({ matches }: { matches: Match[] }) {
+  const liveMatch = matches.find(
+    (m) => m.status === "ongoing" && m.stream_url
+  )
+  if (!liveMatch?.stream_url) return null
+
+  const videoID = extractYouTubeVideoID(liveMatch.stream_url)
+  if (!videoID) return null
+
+  const embedURL = `https://www.youtube.com/embed/${videoID}?autoplay=0&rel=0`
+
+  function openPopOut() {
+    const width = 480
+    const height = 270
+    const left = window.screenX + window.innerWidth - width - 24
+    const top = window.screenY + window.innerHeight - height - 24
+    window.open(
+      embedURL,
+      "cazetv-live",
+      `noopener,noreferrer,width=${width},height=${height},left=${left},top=${top},resizable=yes`
+    )
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+          <span className="text-[10px] font-black tracking-wider text-red-400 uppercase">
+            Ao vivo
+          </span>
+        </div>
+        <button
+          onClick={openPopOut}
+          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+          title="Abrir em picture-in-picture"
+        >
+          <PictureInPicture className="h-3 w-3" />
+          PiP
+        </button>
+      </div>
+      <div className="aspect-video w-full overflow-hidden rounded-lg border border-slate-800/80 bg-slate-950">
+        <iframe
+          src={embedURL}
+          className="h-full w-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title={`${liveMatch.home_team} x ${liveMatch.away_team}`}
+        />
+      </div>
+      <p className="mt-1 truncate text-[10px] text-slate-500">
+        {liveMatch.home_team} x {liveMatch.away_team}
+      </p>
+    </div>
+  )
+}
 
 export function RoundPanel({
   roundName,
@@ -220,6 +289,9 @@ export function RoundPanel({
           ))}
         </div>
       </div>
+
+      {/* Stream ao vivo */}
+      <LiveStreamThumbnail matches={matches} />
 
       {/* Confirmar Todos */}
       <Button
