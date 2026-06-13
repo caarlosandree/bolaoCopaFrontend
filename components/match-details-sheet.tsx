@@ -379,7 +379,7 @@ function LineupsSection({
   details: MatchDetails
   match: Match
 }) {
-  const lineups = extractArray(details.lineups, ["lineup", "lineups"])
+  const lineups = extractArray(details.lineups, ["lookup", "lineup", "lineups"])
   const available = dataAvailable(details.lineups) && lineups.length > 0
 
   return (
@@ -428,6 +428,7 @@ function PitchColumn({ team, items }: { team: string; items: LooseRecord[] }) {
 
 function StatsSection({ details }: { details: MatchDetails }) {
   const stats = extractArray(details.statistics, [
+    "lookup",
     "eventstats",
     "stats",
     "statistics",
@@ -479,7 +480,7 @@ function StatRow({ stat }: { stat: LooseRecord }) {
 }
 
 function EventsSection({ details }: { details: MatchDetails }) {
-  const events = extractArray(details.events, ["timeline", "events"])
+  const events = extractArray(details.events, ["lookup", "timeline", "events"])
   const available = dataAvailable(details.events) && events.length > 0
 
   return (
