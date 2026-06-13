@@ -11,6 +11,7 @@ import {
   Sparkles,
   Trash2,
   Database,
+  Radio,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
@@ -18,6 +19,7 @@ import {
   syncSchedule,
   resetSchedule,
   syncMatchDetails,
+  syncStreams,
   getAdminMatches,
   getSyncLogs,
 } from "@/lib/api"
@@ -82,6 +84,7 @@ export default function JogosPage() {
   const [syncing, setSyncing] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [syncingDetails, setSyncingDetails] = useState(false)
+  const [syncingStreams, setSyncingStreams] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
 
   async function loadMatches(nextPage = page) {
@@ -208,6 +211,21 @@ export default function JogosPage() {
       )
     } finally {
       setSyncingDetails(false)
+    }
+  }
+
+  async function handleSyncStreams() {
+    setSyncingStreams(true)
+    addLog("Iniciando sync de streams ao vivo (YouTube/CazeTV)...")
+    try {
+      const result = await syncStreams()
+      addLog(`[OK] ${result.message}`)
+    } catch (err) {
+      addLog(
+        `[ERRO] ${err instanceof Error ? err.message : "erro desconhecido"}`
+      )
+    } finally {
+      setSyncingStreams(false)
     }
   }
 
@@ -378,7 +396,7 @@ export default function JogosPage() {
               <Button
                 className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-nina-orange to-nina-red font-bold text-white shadow-lg shadow-nina-orange/10 transition-all duration-300 hover:from-nina-orange/90 hover:to-nina-red/90 hover:shadow-nina-orange/20"
                 onClick={handleSync}
-                disabled={syncing || resetting}
+                disabled={syncing || resetting || syncingDetails || syncingStreams}
               >
                 <RefreshCw
                   className={cn("h-4 w-4", syncing && "animate-spin")}
@@ -390,7 +408,7 @@ export default function JogosPage() {
                 variant="outline"
                 className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-800/60 bg-blue-950/30 text-xs font-bold text-blue-400 transition-all hover:border-blue-700/80 hover:bg-blue-950/60 hover:text-blue-300"
                 onClick={handleSyncDetails}
-                disabled={syncing || resetting || syncingDetails}
+                disabled={syncing || resetting || syncingDetails || syncingStreams}
               >
                 <Database
                   className={cn(
@@ -403,9 +421,24 @@ export default function JogosPage() {
 
               <Button
                 variant="outline"
+                className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-purple-800/60 bg-purple-950/30 text-xs font-bold text-purple-400 transition-all hover:border-purple-700/80 hover:bg-purple-950/60 hover:text-purple-300"
+                onClick={handleSyncStreams}
+                disabled={syncing || resetting || syncingDetails || syncingStreams}
+              >
+                <Radio
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    syncingStreams && "animate-pulse"
+                  )}
+                />
+                {syncingStreams ? "Sincronizando streams..." : "Sync Streams"}
+              </Button>
+
+              <Button
+                variant="outline"
                 className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-red-800/60 bg-red-950/30 text-xs font-bold text-red-400 transition-all hover:border-red-700/80 hover:bg-red-950/60 hover:text-red-300"
                 onClick={handleReset}
-                disabled={syncing || resetting || syncingDetails}
+                disabled={syncing || resetting || syncingDetails || syncingStreams}
               >
                 <Trash2
                   className={cn("h-3.5 w-3.5", resetting && "animate-pulse")}
@@ -449,12 +482,14 @@ export default function JogosPage() {
               </div>
               <div className="mt-2 flex items-center justify-between border-t border-slate-900 pt-2.5 text-[10px] text-slate-500">
                 <span className="font-semibold tracking-wider">
-                  STATUS: {syncing ? "SINCRONIZANDO" : "PRONTO"}
+                  STATUS: {syncing || syncingDetails || syncingStreams || resetting ? "SINCRONIZANDO" : "PRONTO"}
                 </span>
                 <span
                   className={cn(
                     "h-2 w-2 rounded-full",
-                    syncing ? "animate-pulse bg-nina-orange" : "bg-nina-green"
+                    syncing || syncingDetails || syncingStreams || resetting
+                      ? "animate-pulse bg-nina-orange"
+                      : "bg-nina-green"
                   )}
                 />
               </div>

@@ -158,6 +158,12 @@ export function syncMatchDetails() {
   }>("/api/admin/sync/match-details", { method: "POST" })
 }
 
+export function syncStreams() {
+  return request<{ message: string }>("/api/admin/sync/streams", {
+    method: "POST",
+  })
+}
+
 export function getAdminMatches(page = 1, pageSize = 12) {
   return request<AdminMatchesPage>(
     `/api/admin/matches?page=${page}&page_size=${pageSize}`
