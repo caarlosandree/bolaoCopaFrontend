@@ -1,6 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react"
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react"
 import {
   Activity,
   BarChart3,
@@ -109,6 +115,10 @@ export function MatchDetailsSheet({ match }: MatchDetailsSheetProps) {
 
         <div className="space-y-4 p-4">
           <MatchHero match={match} mediaEvent={mediaEvent} />
+
+          {match.status === "ongoing" && match.stream_url && (
+            <LiveStreamSection streamUrl={match.stream_url} />
+          )}
 
           {loading && (
             <div className={cn(SECTION_CLASS, "py-8 text-center")}>
@@ -796,4 +806,26 @@ function computeFormProbability(
     awayWin,
     matchCount: Math.min(homeResults.length, awayResults.length),
   }
+}
+
+function LiveStreamSection({ streamUrl }: { streamUrl: string }) {
+  return (
+    <div className={SECTION_CLASS}>
+      <div className="mb-2 flex items-center gap-2">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+        <span className="text-xs font-bold tracking-wide text-red-400 uppercase">
+          Ao Vivo
+        </span>
+      </div>
+      <div className="aspect-video w-full overflow-hidden rounded-lg">
+        <iframe
+          src={`${streamUrl}?autoplay=0&rel=0`}
+          className="h-full w-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="Transmissão ao vivo"
+        />
+      </div>
+    </div>
+  )
 }

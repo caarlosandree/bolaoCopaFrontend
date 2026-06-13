@@ -56,6 +56,7 @@ export type Match = {
   thesportsdb_event_id?: string | null
   thesportsdb_home_team_id?: string | null
   thesportsdb_away_team_id?: string | null
+  stream_url?: string | null
   user_guess?: UserGuess | null
 }
 
