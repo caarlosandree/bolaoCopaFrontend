@@ -122,6 +122,14 @@ export default function DashboardPage() {
     return () => Object.values(timers).forEach(clearTimeout)
   }, [])
 
+  useEffect(() => {
+    if (!selectedRoundId) return
+    const timer = setInterval(() => {
+      loadRoundData(selectedRoundId)
+    }, 3 * 60 * 1000)
+    return () => clearInterval(timer)
+  }, [selectedRoundId])
+
   async function handleSelectRound(roundId: number) {
     if (roundId === selectedRoundId) return
     setSelectedRoundId(roundId)
@@ -480,11 +488,13 @@ export default function DashboardPage() {
                       className={`relative overflow-hidden border bg-slate-900/80 backdrop-blur-md transition-all duration-300 ${
                         match.status === "finished"
                           ? "border-slate-800/40"
-                          : locked
-                            ? "border-slate-800/40 opacity-90"
-                            : warning
-                              ? "animate-pulse-slow border-amber-500/40 shadow-lg shadow-amber-500/5"
-                              : "border-green-900/60 hover:border-green-700/60 hover:shadow-xl hover:shadow-green-900/10"
+                          : match.status === "ongoing"
+                            ? "border-nina-orange/30 shadow-lg shadow-nina-orange/5"
+                            : locked
+                              ? "border-slate-800/40 opacity-90"
+                              : warning
+                                ? "animate-pulse-slow border-amber-500/40 shadow-lg shadow-amber-500/5"
+                                : "border-green-900/60 hover:border-green-700/60 hover:shadow-xl hover:shadow-green-900/10"
                       }`}
                     >
                       {/* Borda superior colorida por estado */}
@@ -492,11 +502,13 @@ export default function DashboardPage() {
                         className={`absolute top-0 left-0 h-1 w-full transition-colors duration-300 ${
                           match.status === "finished"
                             ? "bg-slate-700/60"
-                            : locked
-                              ? "bg-red-800/50"
-                              : warning
-                                ? "animate-pulse bg-gradient-to-r from-amber-500 to-orange-500"
-                                : "bg-gradient-to-r from-green-700 to-green-500"
+                            : match.status === "ongoing"
+                              ? "animate-pulse bg-gradient-to-r from-nina-orange to-amber-500"
+                              : locked
+                                ? "bg-red-800/50"
+                                : warning
+                                  ? "animate-pulse bg-gradient-to-r from-amber-500 to-orange-500"
+                                  : "bg-gradient-to-r from-green-700 to-green-500"
                         }`}
                       />
 
@@ -530,6 +542,11 @@ export default function DashboardPage() {
                                 <span className="inline-flex items-center gap-1 rounded-full border border-slate-800/80 bg-slate-900/60 px-2.5 py-0.5 text-[10px] font-extrabold text-slate-400">
                                   <CheckCircle2 className="h-3 w-3" />
                                   Finalizado
+                                </span>
+                              ) : match.status === "ongoing" ? (
+                                <span className="inline-flex animate-pulse items-center gap-1 rounded-full border border-nina-orange/40 bg-nina-orange/10 px-2.5 py-0.5 text-[10px] font-extrabold text-nina-orange">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-nina-orange" />
+                                  Em andamento
                                 </span>
                               ) : locked ? (
                                 <span className="inline-flex items-center gap-1 rounded-full border border-red-900/30 bg-red-950/40 px-2.5 py-0.5 text-[10px] font-extrabold text-red-400">
@@ -576,7 +593,7 @@ export default function DashboardPage() {
                                 pattern="[0-9]*"
                                 disabled={locked}
                                 value={
-                                  match.status === "finished"
+                                  match.status === "finished" || match.status === "ongoing"
                                     ? String(match.home_score ?? "-")
                                     : g.homeGuess
                                 }
@@ -589,7 +606,9 @@ export default function DashboardPage() {
                                 }
                                 className={`h-12 w-12 rounded-xl border-0 p-0 text-center text-xl font-black transition-all ${
                                   locked
-                                    ? "cursor-not-allowed bg-transparent text-slate-500 opacity-60"
+                                    ? match.status === "ongoing"
+                                      ? "cursor-not-allowed bg-transparent text-nina-orange opacity-90"
+                                      : "cursor-not-allowed bg-transparent text-slate-500 opacity-60"
                                     : "bg-slate-900 text-white focus:ring-1 focus:ring-green-600/50"
                                 }`}
                                 placeholder="-"
@@ -604,7 +623,7 @@ export default function DashboardPage() {
                                 pattern="[0-9]*"
                                 disabled={locked}
                                 value={
-                                  match.status === "finished"
+                                  match.status === "finished" || match.status === "ongoing"
                                     ? String(match.away_score ?? "-")
                                     : g.awayGuess
                                 }
@@ -617,7 +636,9 @@ export default function DashboardPage() {
                                 }
                                 className={`h-12 w-12 rounded-xl border-0 p-0 text-center text-xl font-black transition-all ${
                                   locked
-                                    ? "cursor-not-allowed bg-transparent text-slate-500 opacity-60"
+                                    ? match.status === "ongoing"
+                                      ? "cursor-not-allowed bg-transparent text-nina-orange opacity-90"
+                                      : "cursor-not-allowed bg-transparent text-slate-500 opacity-60"
                                     : "bg-slate-900 text-white focus:ring-1 focus:ring-green-600/50"
                                 }`}
                                 placeholder="-"
@@ -678,6 +699,23 @@ export default function DashboardPage() {
                                 </span>
                               </div>
                             )
+                          ) : match.status === "ongoing" ? (
+                            <div className="w-full rounded-xl border border-nina-orange/20 bg-nina-orange/5 px-3 py-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-bold text-nina-orange">
+                                  Jogo em andamento
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  Atualiza a cada 3 min
+                                </span>
+                              </div>
+                              {match.user_guess && (
+                                <p className="mt-1 text-[10px] text-slate-500">
+                                  Seu palpite: {match.user_guess.home_guess} ×{" "}
+                                  {match.user_guess.away_guess}
+                                </p>
+                              )}
+                            </div>
                           ) : locked ? (
                             <div className="w-full rounded-xl border border-slate-800/40 bg-slate-950/40 px-4 py-2 text-center">
                               <span className="mb-0.5 block text-[9px] font-black tracking-wider text-slate-500 uppercase">

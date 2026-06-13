@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type ComponentType, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react"
 import {
   Activity,
   BarChart3,
@@ -62,6 +62,22 @@ export function MatchDetailsSheet({ match }: MatchDetailsSheetProps) {
       })
       .finally(() => setLoading(false))
   }
+
+  function refreshDetails() {
+    if (!open) return
+    getMatchDetails(match.id)
+      .then(setDetails)
+      .catch(() => {
+        /* silencioso no polling */
+      })
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const timer = setInterval(refreshDetails, 5 * 60 * 1000)
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, match.id])
 
   const mediaEvent = useMemo(() => firstEvent(details?.media), [details?.media])
 

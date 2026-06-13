@@ -111,7 +111,7 @@ export default function ResultadosPage() {
 
   async function handleSync() {
     setSyncing(true)
-    addLog("Iniciando sincronização de resultados (worldcup26)...")
+    addLog("Iniciando sincronização de resultados (TheSportsDB)...")
     try {
       const result = await syncResults()
       addLog(
@@ -143,7 +143,7 @@ export default function ResultadosPage() {
             Carga de Resultados
           </h1>
           <p className="text-xs text-slate-400">
-            Sincroniza placar final e pontuação via worldcup26
+            Sincroniza placar final e pontuação via TheSportsDB
           </p>
         </div>
       </div>
