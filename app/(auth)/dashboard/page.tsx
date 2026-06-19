@@ -124,9 +124,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!selectedRoundId) return
-    const timer = setInterval(() => {
-      loadRoundData(selectedRoundId)
-    }, 3 * 60 * 1000)
+    const timer = setInterval(
+      () => {
+        loadRoundData(selectedRoundId)
+      },
+      3 * 60 * 1000
+    )
     return () => clearInterval(timer)
   }, [selectedRoundId])
 
@@ -593,7 +596,8 @@ export default function DashboardPage() {
                                 pattern="[0-9]*"
                                 disabled={locked}
                                 value={
-                                  match.status === "finished" || match.status === "ongoing"
+                                  match.status === "finished" ||
+                                  match.status === "ongoing"
                                     ? String(match.home_score ?? "-")
                                     : g.homeGuess
                                 }
@@ -623,7 +627,8 @@ export default function DashboardPage() {
                                 pattern="[0-9]*"
                                 disabled={locked}
                                 value={
-                                  match.status === "finished" || match.status === "ongoing"
+                                  match.status === "finished" ||
+                                  match.status === "ongoing"
                                     ? String(match.away_score ?? "-")
                                     : g.awayGuess
                                 }

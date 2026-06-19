@@ -195,6 +195,24 @@ export function getAdminUsers() {
   return request<User[]>("/api/admin/users")
 }
 
+export function updateUserHidden(userId: number, isHidden: boolean) {
+  return request<{ message: string; user_id: number; is_hidden: boolean }>(
+    `/api/admin/users/${userId}/hidden`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ is_hidden: isHidden }),
+    }
+  )
+}
+
+// Admin: excluir usuário (remove palpites em cascata)
+export function deleteAdminUser(userId: number) {
+  return request<{ message: string; user_id: number }>(
+    `/api/admin/users/${userId}`,
+    { method: "DELETE" }
+  )
+}
+
 // Estatísticas
 export function getCopaOverview() {
   return request<CopaOverview>("/api/statistics/copa")

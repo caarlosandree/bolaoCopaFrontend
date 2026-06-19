@@ -7,6 +7,7 @@ export type User = {
   role: UserRole
   total_points: number
   avatar_url: string | null
+  is_hidden: boolean
   created_at: string
 }
 
@@ -257,6 +258,7 @@ export type RoundPoint = {
 
 export type UserEvolution = {
   user: string
+  user_id: number
   avatar_url: string | null
   points: RoundPoint[]
 }
@@ -267,6 +269,7 @@ export type GuessDistribution = {
 }
 
 export type AccuracyRow = {
+  user_id: number
   name: string
   avatar_url: string | null
   exact: number
