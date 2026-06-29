@@ -297,6 +297,11 @@ export default function JogosPage() {
                         <div className="hidden max-w-[130px] truncate rounded border border-slate-700/50 bg-slate-800/70 px-2 py-0.5 text-[10px] font-semibold text-slate-300 sm:block">
                           {match.round_name}
                         </div>
+                        {match.is_knockout && (
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-nina-purple/30 bg-nina-purple/10 px-2 py-0.5 text-[10px] font-black tracking-wider text-nina-purple uppercase">
+                            Mata-mata
+                          </span>
+                        )}
                       </div>
 
                       {/* Matchup with Flags */}

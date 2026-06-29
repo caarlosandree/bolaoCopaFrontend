@@ -36,11 +36,15 @@ export type RoundSummary = {
   last_match_at: string | null
 }
 
+export type AdvanceMethod = "et" | "penalties"
+
 export type UserGuess = {
   id?: number
   home_guess: number
   away_guess: number
   points_earned?: number
+  advancing_team?: "home" | "away" | null
+  advance_method?: AdvanceMethod | null
 }
 
 export type Match = {
@@ -58,6 +62,9 @@ export type Match = {
   thesportsdb_home_team_id?: string | null
   thesportsdb_away_team_id?: string | null
   stream_url?: string | null
+  is_knockout?: boolean
+  winner_team?: "home" | "away" | null
+  advance_method?: AdvanceMethod | null
   user_guess?: UserGuess | null
 }
 
@@ -121,6 +128,9 @@ export type AdminMatch = {
   match_time: string
   round_name: string
   group_name: string | null
+  is_knockout?: boolean
+  winner_team?: "home" | "away" | null
+  advance_method?: AdvanceMethod | null
 }
 
 export type AdminMatchesPage = {
@@ -224,6 +234,9 @@ export type BracketMatch = {
   status: "scheduled" | "ongoing" | "finished"
   match_time: string
   slot: number
+  is_knockout?: boolean
+  winner_team?: "home" | "away" | null
+  advance_method?: AdvanceMethod | null
 }
 
 export type BracketRounds = {
@@ -293,6 +306,8 @@ export type MatchGuessEntry = {
   home_guess: number
   away_guess: number
   points_earned: number | null
+  advancing_team?: "home" | "away" | null
+  advance_method?: AdvanceMethod | null
 }
 
 export type MatchGuessesStats = {
@@ -310,6 +325,9 @@ export type MatchGuessesSummary = {
   away_score: number | null
   status: "scheduled" | "ongoing" | "finished"
   match_time: string
+  is_knockout?: boolean
+  winner_team?: "home" | "away" | null
+  advance_method?: AdvanceMethod | null
 }
 
 export type MatchGuessesResponse = {

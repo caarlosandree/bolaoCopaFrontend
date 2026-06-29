@@ -19,7 +19,7 @@ import {
 import { getRounds, getRoundById, saveGuess } from "@/lib/api"
 import { isLoggedIn } from "@/lib/auth"
 import { useRouter } from "next/navigation"
-import type { Match, Round, RoundSummary } from "@/lib/types"
+import type { AdvanceMethod, Match, Round, RoundSummary } from "@/lib/types"
 import { TeamFlag } from "@/components/ui/team-flag"
 import { RoundPanel } from "@/components/round-panel"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -35,9 +35,21 @@ import {
 type GuessState = {
   homeGuess: string
   awayGuess: string
+  advancingTeam: "home" | "away" | null
+  advanceMethod: AdvanceMethod | null
   saved: boolean
   loading: boolean
   error: string | null
+}
+
+const DEFAULT_GUESS: GuessState = {
+  homeGuess: "",
+  awayGuess: "",
+  advancingTeam: null,
+  advanceMethod: null,
+  saved: false,
+  loading: false,
+  error: null,
 }
 
 export default function DashboardPage() {
@@ -67,6 +79,8 @@ export default function DashboardPage() {
           initialGuesses[m.id] = {
             homeGuess: String(m.user_guess.home_guess),
             awayGuess: String(m.user_guess.away_guess),
+            advancingTeam: m.user_guess.advancing_team ?? null,
+            advanceMethod: m.user_guess.advance_method ?? null,
             saved: true,
             loading: false,
             error: null,
@@ -145,15 +159,15 @@ export default function DashboardPage() {
     value: string
   ) {
     const clean = value.replace(/\D/g, "")
-    const current = guesses[matchId] ?? {
-      homeGuess: "",
-      awayGuess: "",
-      saved: false,
-      loading: false,
-      error: null,
-    }
+    const current = guesses[matchId] ?? DEFAULT_GUESS
     const newHome = field === "homeGuess" ? clean : current.homeGuess
     const newAway = field === "awayGuess" ? clean : current.awayGuess
+
+    // Se deixou de ser empate em mata-mata, limpa campos de desempate
+    const isDraw = newHome !== "" && newAway !== "" && newHome === newAway
+    const clearedDesempate =
+      !isDraw &&
+      (current.advancingTeam !== null || current.advanceMethod !== null)
 
     setGuesses((prev) => ({
       ...prev,
@@ -163,6 +177,9 @@ export default function DashboardPage() {
         [field]: clean,
         saved: false,
         error: null,
+        ...(clearedDesempate
+          ? { advancingTeam: null, advanceMethod: null }
+          : {}),
       },
     }))
 
@@ -170,20 +187,76 @@ export default function DashboardPage() {
       clearTimeout(debounceTimers.current[matchId])
     }
 
+    // Só auto-salva se não for empate de mata-mata (precisa do desempate)
+    // ou se for empate de mata-mata já com desempate preenchido
     if (newHome !== "" && newAway !== "") {
+      const match = matches.find((m) => m.id === matchId)
+      const needsDesempate = isDraw && match?.is_knockout === true
+      const hasDesempate =
+        current.advancingTeam !== null && current.advanceMethod !== null
+      if (!needsDesempate || hasDesempate) {
+        debounceTimers.current[matchId] = setTimeout(() => {
+          autoSave(matchId, Number(newHome), Number(newAway))
+        }, 800)
+      }
+    }
+  }
+
+  function handleDesempateChange(
+    matchId: number,
+    field: "advancingTeam" | "advanceMethod",
+    value: "home" | "away" | AdvanceMethod
+  ) {
+    const current = guesses[matchId] ?? DEFAULT_GUESS
+    const updated: GuessState = {
+      ...current,
+      [field]: value as "home" | "away" | AdvanceMethod,
+      saved: false,
+      error: null,
+    }
+
+    setGuesses((prev) => ({
+      ...prev,
+      [matchId]: updated,
+    }))
+
+    if (debounceTimers.current[matchId]) {
+      clearTimeout(debounceTimers.current[matchId])
+    }
+
+    if (
+      updated.homeGuess !== "" &&
+      updated.awayGuess !== "" &&
+      updated.advancingTeam !== null &&
+      updated.advanceMethod !== null
+    ) {
       debounceTimers.current[matchId] = setTimeout(() => {
-        autoSave(matchId, Number(newHome), Number(newAway))
-      }, 800)
+        autoSave(matchId, Number(updated.homeGuess), Number(updated.awayGuess))
+      }, 400)
     }
   }
 
   async function autoSave(matchId: number, home: number, away: number) {
+    const g = guesses[matchId]
+    const match = matches.find((m) => m.id === matchId)
+    const isDraw = home === away
+    const isKnockout = match?.is_knockout === true
+    const advancingTeam =
+      isDraw && isKnockout ? (g?.advancingTeam ?? null) : null
+    const advanceMethod: AdvanceMethod | null =
+      isDraw && isKnockout ? (g?.advanceMethod ?? null) : null
+
+    // Empate em mata-mata exige desempate preenchido antes de salvar
+    if (isDraw && isKnockout && (!advancingTeam || !advanceMethod)) {
+      return
+    }
+
     setGuesses((prev) => ({
       ...prev,
       [matchId]: { ...prev[matchId], loading: true, error: null },
     }))
     try {
-      await saveGuess(matchId, home, away)
+      await saveGuess(matchId, home, away, advancingTeam, advanceMethod)
       setGuesses((prev) => ({
         ...prev,
         [matchId]: {
@@ -210,19 +283,28 @@ export default function DashboardPage() {
   async function handleSave(matchId: number) {
     const g = guesses[matchId]
     if (!g || g.homeGuess === "" || g.awayGuess === "") return
+    const match = matches.find((m) => m.id === matchId)
+    const isDraw = g.homeGuess === g.awayGuess
+    if (
+      isDraw &&
+      match?.is_knockout &&
+      (!g.advancingTeam || !g.advanceMethod)
+    ) {
+      return
+    }
     await autoSave(matchId, Number(g.homeGuess), Number(g.awayGuess))
   }
 
   async function handleConfirmAll() {
     const pending = matches.filter((m) => {
       const g = guesses[m.id]
-      return (
-        g &&
-        !g.saved &&
-        !isLocked(m) &&
-        g.homeGuess !== "" &&
-        g.awayGuess !== ""
-      )
+      if (!g || g.saved || isLocked(m)) return false
+      if (g.homeGuess === "" || g.awayGuess === "") return false
+      const isDraw = g.homeGuess === g.awayGuess
+      if (isDraw && m.is_knockout) {
+        return g.advancingTeam !== null && g.advanceMethod !== null
+      }
+      return true
     })
     await Promise.all(
       pending.map((m) => {
@@ -277,6 +359,14 @@ export default function DashboardPage() {
         borderClass: "border-green-900/40",
         bgClass: "bg-green-950/30",
       }
+    if (pts >= 6 && pts <= 8)
+      return {
+        icon: "🎯",
+        message: `Placar exato + bônus mata-mata!`,
+        colorClass: "text-emerald-300",
+        borderClass: "border-emerald-900/40",
+        bgClass: "bg-emerald-950/30",
+      }
     if (pts === 3)
       return {
         icon: "✅",
@@ -293,10 +383,10 @@ export default function DashboardPage() {
         borderClass: "border-amber-900/40",
         bgClass: "bg-amber-950/30",
       }
-    if (pts === 1)
+    if (pts >= 1 && pts <= 4)
       return {
         icon: "🤝",
-        message: "Acertou o empate!",
+        message: pts > 1 ? "Empate + bônus mata-mata!" : "Acertou o empate!",
         colorClass: "text-teal-300",
         borderClass: "border-teal-900/40",
         bgClass: "bg-teal-950/30",
@@ -464,17 +554,20 @@ export default function DashboardPage() {
             ) : (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {matches.map((match) => {
-                  const g = guesses[match.id] ?? {
-                    homeGuess: "",
-                    awayGuess: "",
-                    saved: false,
-                    loading: false,
-                  }
+                  const g = guesses[match.id] ?? DEFAULT_GUESS
                   const locked = isLocked(match)
                   const diffMs =
                     new Date(match.match_time).getTime() - currentTime.getTime()
                   const minutesLeft = diffMs / 60000
                   const warning = minutesLeft > 0 && minutesLeft <= 15
+
+                  const isEditableGuess =
+                    !locked &&
+                    match.status === "scheduled" &&
+                    g.homeGuess !== "" &&
+                    g.awayGuess !== "" &&
+                    g.homeGuess === g.awayGuess &&
+                    match.is_knockout === true
 
                   const cardStyle =
                     !locked && match.status === "scheduled"
@@ -539,6 +632,11 @@ export default function DashboardPage() {
                               {match.group_name && (
                                 <span className="text-[10px] font-black tracking-wider text-slate-500 uppercase">
                                   {match.group_name}
+                                </span>
+                              )}
+                              {match.is_knockout && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-nina-purple/30 bg-nina-purple/10 px-2 py-0.5 text-[9px] font-black tracking-wider text-nina-purple uppercase">
+                                  Mata-mata
                                 </span>
                               )}
                               {match.status === "finished" ? (
@@ -663,6 +761,84 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
+                        {/* Zona 2.5: Desempate mata-mata (empate em jogo eliminatório) */}
+                        {isEditableGuess && (
+                          <div className="rounded-xl border border-nina-purple/30 bg-nina-purple/5 px-3 py-2.5">
+                            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-black tracking-wider text-nina-purple uppercase">
+                              <Trophy className="h-3 w-3" />
+                              Empate em mata-mata — defina o desempate
+                            </p>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <label className="flex flex-col gap-1 sm:flex-1">
+                                <span className="text-[10px] font-bold text-slate-400">
+                                  Quem avança?
+                                </span>
+                                <Select
+                                  value={g.advancingTeam ?? undefined}
+                                  onValueChange={(v) =>
+                                    handleDesempateChange(
+                                      match.id,
+                                      "advancingTeam",
+                                      v as "home" | "away"
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="h-8 w-full border-slate-700/60 bg-slate-900/60 text-xs font-bold text-white focus:ring-nina-purple/30">
+                                    <SelectValue placeholder="Selecionar..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="border-slate-700/60 bg-slate-900">
+                                    <SelectItem
+                                      value="home"
+                                      className="font-medium text-slate-200 focus:bg-slate-800 focus:text-white"
+                                    >
+                                      {match.home_team}
+                                    </SelectItem>
+                                    <SelectItem
+                                      value="away"
+                                      className="font-medium text-slate-200 focus:bg-slate-800 focus:text-white"
+                                    >
+                                      {match.away_team}
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </label>
+                              <label className="flex flex-col gap-1 sm:flex-1">
+                                <span className="text-[10px] font-bold text-slate-400">
+                                  Como?
+                                </span>
+                                <Select
+                                  value={g.advanceMethod ?? undefined}
+                                  onValueChange={(v) =>
+                                    handleDesempateChange(
+                                      match.id,
+                                      "advanceMethod",
+                                      v as AdvanceMethod
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="h-8 w-full border-slate-700/60 bg-slate-900/60 text-xs font-bold text-white focus:ring-nina-purple/30">
+                                    <SelectValue placeholder="Selecionar..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="border-slate-700/60 bg-slate-900">
+                                    <SelectItem
+                                      value="et"
+                                      className="font-medium text-slate-200 focus:bg-slate-800 focus:text-white"
+                                    >
+                                      Prorrogação
+                                    </SelectItem>
+                                    <SelectItem
+                                      value="penalties"
+                                      className="font-medium text-slate-200 focus:bg-slate-800 focus:text-white"
+                                    >
+                                      Pênaltis
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Zona 3: Status / Auto-save */}
                         <div className="border-t border-slate-800/60 pt-3">
                           {match.status === "finished" ? (
@@ -693,6 +869,18 @@ export default function DashboardPage() {
                                     <p className="mt-1 text-[10px] text-slate-500">
                                       Seu palpite: {match.user_guess.home_guess}{" "}
                                       × {match.user_guess.away_guess}
+                                      {match.user_guess.advancing_team && (
+                                        <>
+                                          {" · "}
+                                          Avança:{" "}
+                                          {match.user_guess.advancing_team ===
+                                          "home"
+                                            ? match.home_team
+                                            : match.away_team}
+                                          {match.user_guess.advance_method &&
+                                            ` (${match.user_guess.advance_method === "et" ? "Prorr." : "Pênaltis"})`}
+                                        </>
+                                      )}
                                     </p>
                                   </div>
                                 )
@@ -718,6 +906,18 @@ export default function DashboardPage() {
                                 <p className="mt-1 text-[10px] text-slate-500">
                                   Seu palpite: {match.user_guess.home_guess} ×{" "}
                                   {match.user_guess.away_guess}
+                                  {match.user_guess.advancing_team && (
+                                    <>
+                                      {" · "}
+                                      Avança:{" "}
+                                      {match.user_guess.advancing_team ===
+                                      "home"
+                                        ? match.home_team
+                                        : match.away_team}
+                                      {match.user_guess.advance_method &&
+                                        ` (${match.user_guess.advance_method === "et" ? "Prorr." : "Pênaltis"})`}
+                                    </>
+                                  )}
                                 </p>
                               )}
                             </div>
@@ -731,6 +931,18 @@ export default function DashboardPage() {
                                   ? `${g.homeGuess || 0} × ${g.awayGuess || 0}`
                                   : "Sem palpite"}
                               </span>
+                              {g.advancingTeam && g.advanceMethod && (
+                                <span className="mt-0.5 block text-[10px] font-bold text-nina-purple">
+                                  Avança:{" "}
+                                  {g.advancingTeam === "home"
+                                    ? match.home_team
+                                    : match.away_team}
+                                  {" · "}
+                                  {g.advanceMethod === "et"
+                                    ? "Prorrogação"
+                                    : "Pênaltis"}
+                                </span>
+                              )}
                             </div>
                           ) : g.loading ? (
                             <div className="flex items-center justify-center gap-2 py-1.5 text-xs text-slate-400">

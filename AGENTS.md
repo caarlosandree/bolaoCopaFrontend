@@ -9,7 +9,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 Fonte de verdade compartilhada em [`AGENTS.md` na raiz do repo](../AGENTS.md).
 
-Regras granulares do frontend em [`.windsurf/rules/frontend-*.md`](../.windsurf/rules/).
+Regras granulares do frontend em [`.devin/rules/frontend-*.md`](../.devin/rules/).
 <!-- END:agent-rules -->
 
 <!-- BEGIN:commit-rules -->

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { UserAvatar } from "@/components/ui/user-avatar"
 import { TeamFlag } from "@/components/ui/team-flag"
-import { Target, Zap, X, Users } from "lucide-react"
+import { Target, Zap, X, Users, Trophy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { MatchGuessesResponse } from "@/lib/types"
 
@@ -21,10 +21,24 @@ type Props = {
 }
 
 function PointsBadge({ points }: { points: number | null }) {
+  if (points === null || points === 0)
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-800/50 px-2.5 py-0.5 text-[11px] font-black text-slate-500">
+        <X className="h-3 w-3" />0 pts
+      </span>
+    )
   if (points === 5)
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-black text-emerald-400">
         <Target className="h-3 w-3" />5 pts
+      </span>
+    )
+  if (points >= 6 && points <= 8)
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-black text-emerald-300">
+        <Target className="h-3 w-3" />
+        {points} pts
+        <Trophy className="h-2.5 w-2.5" />
       </span>
     )
   if (points === 3)
@@ -39,9 +53,18 @@ function PointsBadge({ points }: { points: number | null }) {
         <Zap className="h-3 w-3" />2 pts
       </span>
     )
+  if (points >= 1 && points <= 4)
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-teal-500/30 bg-teal-500/15 px-2.5 py-0.5 text-[11px] font-black text-teal-300">
+        <Zap className="h-3 w-3" />
+        {points} pts
+        {points > 1 && <Trophy className="h-2.5 w-2.5" />}
+      </span>
+    )
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-800/50 px-2.5 py-0.5 text-[11px] font-black text-slate-500">
-      <X className="h-3 w-3" />0 pts
+      <X className="h-3 w-3" />
+      {points} pts
     </span>
   )
 }
@@ -116,6 +139,21 @@ export function MatchGuessesDialog({
                     ? "Ao vivo"
                     : "Bloqueado"}
               </span>
+              {match.is_knockout && (
+                <span className="rounded-full border border-nina-purple/30 bg-nina-purple/10 px-2 py-0.5 text-[9px] font-black tracking-wider text-nina-purple uppercase">
+                  Mata-mata
+                </span>
+              )}
+              {match.is_knockout &&
+                match.winner_team &&
+                match.advance_method && (
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black tracking-wider text-amber-400 uppercase">
+                    {match.winner_team === "home"
+                      ? match.home_team
+                      : match.away_team}{" "}
+                    · {match.advance_method === "et" ? "Prorr." : "Pênaltis"}
+                  </span>
+                )}
             </div>
 
             {/* Time visitante */}
@@ -220,11 +258,21 @@ export function MatchGuessesDialog({
                     </div>
 
                     {/* Palpite */}
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-black text-slate-100">
-                        {g.home_guess} × {g.away_guess}
-                      </span>
-                      <PointsBadge points={g.points_earned} />
+                    <div className="flex flex-col items-end gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-black text-slate-100">
+                          {g.home_guess} × {g.away_guess}
+                        </span>
+                        <PointsBadge points={g.points_earned} />
+                      </div>
+                      {g.advancing_team && g.advance_method && (
+                        <span className="text-[9px] font-bold tracking-wide text-nina-purple">
+                          {g.advancing_team === "home"
+                            ? match.home_team
+                            : match.away_team}{" "}
+                          · {g.advance_method === "et" ? "Prorr." : "Pênaltis"}
+                        </span>
+                      )}
                     </div>
                   </li>
                 )

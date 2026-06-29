@@ -33,6 +33,21 @@ const SCORING_RULES = [
   { icon: "❌", label: "Resultado errado", pts: 0, color: "text-slate-500" },
 ] as const
 
+const KNOCKOUT_BONUS_RULES = [
+  {
+    icon: "🏆",
+    label: "Mata-mata: acertar quem avança",
+    pts: 2,
+    color: "text-nina-purple",
+  },
+  {
+    icon: "⚽",
+    label: "Mata-mata: acertar método (prorr/pênaltis)",
+    pts: 1,
+    color: "text-nina-purple",
+  },
+] as const
+
 function extractYouTubeVideoID(streamUrl: string): string | null {
   try {
     const url = new URL(streamUrl)
@@ -282,6 +297,20 @@ export function RoundPanel({
               <span className="flex-1 text-slate-400">{label}</span>
               <span className={cn("flex-shrink-0 font-black", color)}>
                 {pts > 0 ? `+${pts}` : "0"} pts
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 mb-1.5 text-[10px] font-black tracking-wider text-nina-purple uppercase">
+          Bônus mata-mata (empate)
+        </p>
+        <div className="space-y-1">
+          {KNOCKOUT_BONUS_RULES.map(({ icon, label, pts, color }) => (
+            <div key={label} className="flex items-center gap-2 px-1 text-xs">
+              <span className="flex-shrink-0 text-sm">{icon}</span>
+              <span className="flex-1 text-slate-400">{label}</span>
+              <span className={cn("flex-shrink-0 font-black", color)}>
+                +{pts} pts
               </span>
             </div>
           ))}

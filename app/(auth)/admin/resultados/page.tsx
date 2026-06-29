@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   RefreshCw,
   ClipboardCheck,
@@ -11,11 +12,26 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  Save,
+  Trophy,
 } from "lucide-react"
-import { syncResults, getAdminMatches, getSyncLogs } from "@/lib/api"
-import type { AdminMatch } from "@/lib/types"
+import {
+  syncResults,
+  getAdminMatches,
+  getSyncLogs,
+  updateMatchScore,
+  updateKnockoutResult,
+} from "@/lib/api"
+import type { AdvanceMethod, AdminMatch } from "@/lib/types"
 import { TeamFlag } from "@/components/ui/team-flag"
 import { cn } from "@/lib/utils"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const PAGE_SIZE = 12
 
@@ -44,6 +60,100 @@ export default function ResultadosPage() {
   const [totalPages, setTotalPages] = useState(0)
   const [syncing, setSyncing] = useState(false)
   const [logs, setLogs] = useState<string[]>([])
+
+  // Edição manual de placar por partida
+  type EditState = {
+    home: string
+    away: string
+    winnerTeam: "home" | "away" | null
+    advanceMethod: AdvanceMethod | null
+    saving: boolean
+    error: string | null
+    saved: boolean
+  }
+  const [edits, setEdits] = useState<Record<number, EditState>>({})
+
+  function getEdit(match: AdminMatch): EditState {
+    return (
+      edits[match.id] ?? {
+        home: match.home_score !== null ? String(match.home_score) : "",
+        away: match.away_score !== null ? String(match.away_score) : "",
+        winnerTeam: match.winner_team ?? null,
+        advanceMethod: match.advance_method ?? null,
+        saving: false,
+        error: null,
+        saved: false,
+      }
+    )
+  }
+
+  function patchEdit(matchId: number, patch: Partial<EditState>) {
+    setEdits((prev) => {
+      const existing = prev[matchId] ?? {
+        home: "",
+        away: "",
+        winnerTeam: null,
+        advanceMethod: null,
+        saving: false,
+        error: null,
+        saved: false,
+      }
+      return { ...prev, [matchId]: { ...existing, ...patch } }
+    })
+  }
+
+  function handleScoreInput(
+    matchId: number,
+    field: "home" | "away",
+    value: string
+  ) {
+    const clean = value.replace(/\D/g, "")
+    const cur = edits[matchId]
+    const home = field === "home" ? clean : (cur?.home ?? "")
+    const away = field === "away" ? clean : (cur?.away ?? "")
+    const isDraw = home !== "" && away !== "" && home === away
+    patchEdit(matchId, {
+      [field]: clean,
+      saved: false,
+      error: null,
+      // Se deixou de ser empate, limpa desempate
+      ...(cur && !isDraw && (cur.winnerTeam || cur.advanceMethod)
+        ? { winnerTeam: null, advanceMethod: null }
+        : {}),
+    } as Partial<EditState>)
+  }
+
+  async function handleSaveScore(match: AdminMatch) {
+    const e = getEdit(match)
+    if (e.home === "" || e.away === "") return
+    const home = Number(e.home)
+    const away = Number(e.away)
+    const isDraw = home === away
+    if (match.is_knockout && isDraw && (!e.winnerTeam || !e.advanceMethod)) {
+      patchEdit(match.id, {
+        error: "Defina quem avança e o método para empate em mata-mata.",
+      })
+      return
+    }
+    patchEdit(match.id, { saving: true, error: null, saved: false })
+    try {
+      await updateMatchScore(match.id, home, away)
+      if (match.is_knockout && isDraw && e.winnerTeam && e.advanceMethod) {
+        await updateKnockoutResult(match.id, e.winnerTeam, e.advanceMethod)
+      }
+      patchEdit(match.id, { saving: false, saved: true })
+      addLog(
+        `[OK] Placar de ${match.home_team} x ${match.away_team} atualizado manualmente.`
+      )
+      await loadMatches(page)
+    } catch (err) {
+      patchEdit(match.id, {
+        saving: false,
+        saved: false,
+        error: err instanceof Error ? err.message : "erro ao salvar",
+      })
+    }
+  }
 
   async function loadMatches(nextPage = page) {
     setLoading(true)
@@ -195,6 +305,11 @@ export default function ResultadosPage() {
                               <div className="hidden max-w-[130px] truncate rounded border border-slate-700/50 bg-slate-800/70 px-2 py-0.5 text-[10px] font-semibold text-slate-300 sm:block">
                                 {match.round_name}
                               </div>
+                              {match.is_knockout && (
+                                <span className="inline-flex shrink-0 items-center rounded-full border border-nina-purple/30 bg-nina-purple/10 px-2 py-0.5 text-[10px] font-black tracking-wider text-nina-purple uppercase">
+                                  Mata-mata
+                                </span>
+                              )}
                             </div>
 
                             {/* Match Score with Flags */}
@@ -223,6 +338,22 @@ export default function ResultadosPage() {
                                 </span>
                               </div>
                             </div>
+
+                            {/* Desempate mata-mata definido */}
+                            {match.is_knockout &&
+                              match.winner_team &&
+                              match.advance_method && (
+                                <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black tracking-wider text-amber-400 uppercase">
+                                  <Trophy className="h-3 w-3" />
+                                  {match.winner_team === "home"
+                                    ? match.home_team
+                                    : match.away_team}{" "}
+                                  ·{" "}
+                                  {match.advance_method === "et"
+                                    ? "Prorr."
+                                    : "Pênaltis"}
+                                </div>
+                              )}
 
                             {/* Mobile Round info & Finished status */}
                             <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
@@ -259,59 +390,201 @@ export default function ResultadosPage() {
                           minute: "2-digit",
                         }
                       )
+                      const e = getEdit(match)
+                      const isDraw =
+                        e.home !== "" && e.away !== "" && e.home === e.away
+                      const showDesempate = match.is_knockout === true && isDraw
                       return (
                         <Card
                           key={match.id}
-                          className="group overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/20 opacity-75 transition-all duration-200 hover:border-slate-700/50 hover:bg-slate-900/30"
+                          className="group overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/20 transition-all duration-200 hover:border-slate-700/50 hover:bg-slate-900/30"
                         >
-                          <CardContent className="flex flex-col justify-between gap-4 p-3 sm:flex-row sm:items-center sm:p-4">
-                            {/* Date info */}
-                            <div className="flex shrink-0 items-center gap-3">
-                              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
-                                <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                                <span className="capitalize">{date}</span>
+                          <CardContent className="flex flex-col gap-3 p-3 sm:p-4">
+                            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                              {/* Date info */}
+                              <div className="flex shrink-0 items-center gap-3">
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                                  <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                                  <span className="capitalize">{date}</span>
+                                </div>
+                                <div className="hidden max-w-[130px] truncate rounded border border-slate-800/50 bg-slate-800/40 px-2 py-0.5 text-[10px] font-semibold text-slate-400 sm:block">
+                                  {match.round_name}
+                                </div>
+                                {match.is_knockout && (
+                                  <span className="inline-flex shrink-0 items-center rounded-full border border-nina-purple/30 bg-nina-purple/10 px-2 py-0.5 text-[10px] font-black tracking-wider text-nina-purple uppercase">
+                                    Mata-mata
+                                  </span>
+                                )}
                               </div>
-                              <div className="hidden max-w-[130px] truncate rounded border border-slate-800/50 bg-slate-800/40 px-2 py-0.5 text-[10px] font-semibold text-slate-400 sm:block">
-                                {match.round_name}
+
+                              {/* Matchup + inputs */}
+                              <div className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-800/30 bg-slate-950/20 px-3 py-2 shadow-inner sm:gap-3 sm:px-4">
+                                <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                                  <span className="truncate text-right text-xs font-semibold text-slate-300 sm:text-sm">
+                                    {match.home_team}
+                                  </span>
+                                  <TeamFlag
+                                    teamName={match.home_team}
+                                    className="h-5 w-5 border-white/10 opacity-90 shadow-sm"
+                                  />
+                                </div>
+
+                                <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-800/60 bg-slate-900/95 px-2 py-1 shadow-md">
+                                  <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={2}
+                                    value={e.home}
+                                    onChange={(ev) =>
+                                      handleScoreInput(
+                                        match.id,
+                                        "home",
+                                        ev.target.value
+                                      )
+                                    }
+                                    className="h-7 w-9 border-0 bg-transparent p-0 text-center text-sm font-black text-white tabular-nums focus:ring-0"
+                                    placeholder="-"
+                                  />
+                                  <span className="text-[10px] font-black text-slate-600">
+                                    ×
+                                  </span>
+                                  <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={2}
+                                    value={e.away}
+                                    onChange={(ev) =>
+                                      handleScoreInput(
+                                        match.id,
+                                        "away",
+                                        ev.target.value
+                                      )
+                                    }
+                                    className="h-7 w-9 border-0 bg-transparent p-0 text-center text-sm font-black text-white tabular-nums focus:ring-0"
+                                    placeholder="-"
+                                  />
+                                </div>
+
+                                <div className="flex min-w-0 flex-1 items-center justify-start gap-2">
+                                  <TeamFlag
+                                    teamName={match.away_team}
+                                    className="h-5 w-5 border-white/10 opacity-90 shadow-sm"
+                                  />
+                                  <span className="truncate text-left text-xs font-semibold text-slate-300 sm:text-sm">
+                                    {match.away_team}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Salvar */}
+                              <div className="flex shrink-0 items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSaveScore(match)}
+                                  disabled={
+                                    e.saving || e.home === "" || e.away === ""
+                                  }
+                                  className="h-8 cursor-pointer gap-1 rounded-lg border-0 bg-gradient-to-r from-nina-wine to-nina-purple text-xs font-bold text-white transition-all hover:opacity-90"
+                                >
+                                  {e.saving ? (
+                                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                  ) : (
+                                    <Save className="h-3 w-3" />
+                                  )}
+                                  Salvar
+                                </Button>
                               </div>
                             </div>
 
-                            {/* Matchup with Flags */}
-                            <div className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-800/30 bg-slate-950/20 px-3 py-2 shadow-inner sm:gap-3 sm:px-4">
-                              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                                <span className="truncate text-right text-xs font-semibold text-slate-300 sm:text-sm">
-                                  {match.home_team}
-                                </span>
-                                <TeamFlag
-                                  teamName={match.home_team}
-                                  className="h-5 w-5 border-white/10 opacity-90 shadow-sm"
-                                />
+                            {/* Desempate mata-mata (empate) */}
+                            {showDesempate && (
+                              <div className="rounded-lg border border-nina-purple/30 bg-nina-purple/5 px-3 py-2">
+                                <p className="mb-2 flex items-center gap-1.5 text-[10px] font-black tracking-wider text-nina-purple uppercase">
+                                  <Trophy className="h-3 w-3" />
+                                  Empate em mata-mata — defina o desempate
+                                </p>
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                  <label className="flex flex-col gap-1 sm:flex-1">
+                                    <span className="text-[10px] font-bold text-slate-400">
+                                      Quem avança?
+                                    </span>
+                                    <Select
+                                      value={e.winnerTeam ?? undefined}
+                                      onValueChange={(v) =>
+                                        patchEdit(match.id, {
+                                          winnerTeam: v as "home" | "away",
+                                          saved: false,
+                                          error: null,
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger className="h-8 w-full border-slate-700/60 bg-slate-900/60 text-xs font-bold text-white focus:ring-nina-purple/30">
+                                        <SelectValue placeholder="Selecionar..." />
+                                      </SelectTrigger>
+                                      <SelectContent className="border-slate-700/60 bg-slate-900">
+                                        <SelectItem
+                                          value="home"
+                                          className="font-medium text-slate-200 focus:bg-slate-800 focus:text-white"
+                                        >
+                                          {match.home_team}
+                                        </SelectItem>
+                                        <SelectItem
+                                          value="away"
+                                          className="font-medium text-slate-200 focus:bg-slate-800 focus:text-white"
+                                        >
+                                          {match.away_team}
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </label>
+                                  <label className="flex flex-col gap-1 sm:flex-1">
+                                    <span className="text-[10px] font-bold text-slate-400">
+                                      Como?
+                                    </span>
+                                    <Select
+                                      value={e.advanceMethod ?? undefined}
+                                      onValueChange={(v) =>
+                                        patchEdit(match.id, {
+                                          advanceMethod: v as AdvanceMethod,
+                                          saved: false,
+                                          error: null,
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger className="h-8 w-full border-slate-700/60 bg-slate-900/60 text-xs font-bold text-white focus:ring-nina-purple/30">
+                                        <SelectValue placeholder="Selecionar..." />
+                                      </SelectTrigger>
+                                      <SelectContent className="border-slate-700/60 bg-slate-900">
+                                        <SelectItem
+                                          value="et"
+                                          className="font-medium text-slate-200 focus:bg-slate-800 focus:text-white"
+                                        >
+                                          Prorrogação
+                                        </SelectItem>
+                                        <SelectItem
+                                          value="penalties"
+                                          className="font-medium text-slate-200 focus:bg-slate-800 focus:text-white"
+                                        >
+                                          Pênaltis
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </label>
+                                </div>
                               </div>
+                            )}
 
-                              <span className="shrink-0 px-1.5 text-[10px] font-extrabold tracking-wider text-slate-600 select-none">
-                                VS
-                              </span>
-
-                              <div className="flex min-w-0 flex-1 items-center justify-start gap-2">
-                                <TeamFlag
-                                  teamName={match.away_team}
-                                  className="h-5 w-5 border-white/10 opacity-90 shadow-sm"
-                                />
-                                <span className="truncate text-left text-xs font-semibold text-slate-300 sm:text-sm">
-                                  {match.away_team}
-                                </span>
+                            {/* Feedback */}
+                            {e.error && (
+                              <div className="rounded-lg border border-amber-900/30 bg-amber-950/20 px-3 py-2 text-xs font-bold text-amber-400">
+                                {e.error}
                               </div>
-                            </div>
-
-                            {/* Mobile Round info & Scheduled status */}
-                            <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
-                              <div className="rounded border border-slate-800/50 bg-slate-800/40 px-2 py-0.5 text-[10px] font-semibold text-slate-400 sm:hidden">
-                                {match.round_name}
+                            )}
+                            {e.saved && (
+                              <div className="rounded-lg border border-emerald-900/30 bg-emerald-950/20 px-3 py-2 text-xs font-bold text-emerald-400">
+                                Placar salvo com sucesso.
                               </div>
-                              <span className="inline-flex shrink-0 items-center rounded-full border border-slate-700/50 bg-slate-800/40 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider text-slate-400 uppercase shadow-sm">
-                                Pendente
-                              </span>
-                            </div>
+                            )}
                           </CardContent>
                         </Card>
                       )

@@ -3,18 +3,20 @@
 import { useEffect, useState } from "react"
 import { Loader2, Trophy } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { TeamFlag } from "@/components/ui/team-flag"
 import { getBracket } from "@/lib/api"
+import { cn } from "@/lib/utils"
 import type { BracketMatch, BracketRounds } from "@/lib/types"
 
 // ==========================================
 // Layout constants
 // ==========================================
-const CARD_W = 160
-const CARD_H = 52
-const COL_GAP = 48
+const CARD_W = 188
+const CARD_H = 68
+const COL_GAP = 56
 const COL_W = CARD_W + COL_GAP
-const SLOT_H = 80
-const CENTER_GAP = 80
+const SLOT_H = 92
+const CENTER_GAP = 88
 
 const ROUND_LABELS: Record<string, string> = {
   r32: "Rodada de 32",
@@ -38,6 +40,8 @@ const ROUND_DEPTH: Record<string, number> = {
 }
 
 type RoundKey = keyof BracketRounds
+
+const ROUND_KEYS: RoundKey[] = ["r32", "r16", "qf", "sf", "final", "third"]
 
 // ==========================================
 // Geometry helpers
@@ -73,10 +77,89 @@ function rightColX(colIndex: number) {
   return centerX() + CARD_W / 2 + CENTER_GAP / 2 + colIndex * COL_W
 }
 
+const PENDING_PATTERNS = [
+  "a definir",
+  "grupo",
+  "melhor",
+  "vencedor",
+  "perdedor",
+]
+
+function teamName(name: string | undefined) {
+  const trimmed = name?.trim()
+  return trimmed ? trimmed : "A definir"
+}
+
+function isPendingTeam(name: string) {
+  const normalized = name.toLowerCase()
+  return PENDING_PATTERNS.some((pattern) => normalized.includes(pattern))
+}
+
+function truncateTeamName(name: string) {
+  return name.length > 18 ? `${name.slice(0, 17)}…` : name
+}
+
+function TeamBadge({ name, pending }: { name: string; pending: boolean }) {
+  if (pending) {
+    return (
+      <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-dashed border-slate-600 bg-slate-950/70">
+        <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
+      </span>
+    )
+  }
+
+  return (
+    <TeamFlag teamName={name} className="h-4 w-4" fallbackSize="text-[7px]" />
+  )
+}
+
+function TeamRow({
+  name,
+  score,
+  won,
+}: {
+  name: string
+  score: number | null | undefined
+  won: boolean
+}) {
+  const pending = isPendingTeam(name)
+
+  return (
+    <div
+      className={cn(
+        "flex min-h-0 items-center gap-1.5 rounded-[6px] px-1.5 py-1 transition-colors",
+        won && "bg-white/[0.06]",
+        pending && "text-slate-500"
+      )}
+    >
+      <TeamBadge name={name} pending={pending} />
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-[10px] leading-none",
+          won ? "font-black text-white" : "font-semibold text-slate-300",
+          pending && "font-medium text-slate-500"
+        )}
+      >
+        {truncateTeamName(name)}
+      </span>
+      {score !== undefined && score !== null && (
+        <span
+          className={cn(
+            "ml-1 min-w-4 text-right text-[11px] font-black tabular-nums",
+            won ? "text-white" : "text-slate-500"
+          )}
+        >
+          {score}
+        </span>
+      )}
+    </div>
+  )
+}
+
 // ==========================================
-// Match card SVG
+// Match card
 // ==========================================
-function MatchCardSVG({
+function MatchCard({
   x,
   y,
   match,
@@ -87,113 +170,84 @@ function MatchCardSVG({
 }) {
   const isFinished = match?.status === "finished"
   const isOngoing = match?.status === "ongoing"
-
-  const homeName = match?.home.name ?? "A definir"
-  const awayName = match?.away.name ?? "A definir"
+  const homeName = teamName(match?.home.name)
+  const awayName = teamName(match?.away.name)
   const homeScore = match?.home.score
   const awayScore = match?.away.score
 
-  const homeWon =
+  // Em mata-mata com empate, o vencedor é definido por winner_team (não pelo placar)
+  const isDraw =
     isFinished &&
     homeScore !== null &&
     homeScore !== undefined &&
     awayScore !== null &&
     awayScore !== undefined &&
-    homeScore > awayScore
+    homeScore === awayScore
+  const hasWinnerTeam =
+    match?.winner_team === "home" || match?.winner_team === "away"
+
+  const homeWon =
+    isFinished &&
+    (isDraw && hasWinnerTeam
+      ? match?.winner_team === "home"
+      : homeScore !== null &&
+        homeScore !== undefined &&
+        awayScore !== null &&
+        awayScore !== undefined &&
+        homeScore > awayScore)
 
   const awayWon =
     isFinished &&
-    homeScore !== null &&
-    homeScore !== undefined &&
-    awayScore !== null &&
-    awayScore !== undefined &&
-    awayScore > homeScore
+    (isDraw && hasWinnerTeam
+      ? match?.winner_team === "away"
+      : homeScore !== null &&
+        homeScore !== undefined &&
+        awayScore !== null &&
+        awayScore !== undefined &&
+        awayScore > homeScore)
 
-  const borderColor = isOngoing ? "#D91E4E" : isFinished ? "#475569" : "#334155"
+  const advanceLabel =
+    isDraw && match?.advance_method
+      ? match.advance_method === "et"
+        ? "Prorr."
+        : "Pênaltis"
+      : null
+
+  const title = `${homeName} x ${awayName}${
+    advanceLabel ? ` (${advanceLabel})` : ""
+  }`
 
   return (
     <g>
-      <rect
-        x={x}
-        y={y}
-        width={CARD_W}
-        height={CARD_H}
-        rx={8}
-        fill="#0f172a"
-        stroke={borderColor}
-        strokeWidth={isOngoing ? 1.5 : 1}
-      />
-
-      {isOngoing && (
-        <rect
-          x={x}
-          y={y}
-          width={CARD_W}
-          height={CARD_H}
-          rx={8}
-          fill="none"
-          stroke="#D91E4E"
-          strokeWidth={2.5}
-          opacity={0.3}
-        />
-      )}
-
-      <line
-        x1={x + 1}
-        y1={y + CARD_H / 2}
-        x2={x + CARD_W - 1}
-        y2={y + CARD_H / 2}
-        stroke="#1e293b"
-        strokeWidth={1}
-      />
-
-      <text
-        x={x + 10}
-        y={y + CARD_H / 4 + 4}
-        fontSize={10}
-        fontWeight={homeWon ? "800" : "500"}
-        fill={homeWon ? "#ffffff" : "#94a3b8"}
-        dominantBaseline="middle"
-      >
-        {homeName.length > 14 ? homeName.slice(0, 13) + "…" : homeName}
-      </text>
-      {homeScore !== undefined && homeScore !== null && (
-        <text
-          x={x + CARD_W - 10}
-          y={y + CARD_H / 4 + 4}
-          fontSize={11}
-          fontWeight="800"
-          fill={homeWon ? "#ffffff" : "#64748b"}
-          textAnchor="end"
-          dominantBaseline="middle"
+      <foreignObject x={x} y={y} width={CARD_W} height={CARD_H}>
+        <div
+          title={title}
+          tabIndex={0}
+          role="group"
+          aria-label={title}
+          className={cn(
+            "group relative h-full w-full rounded-lg border bg-slate-950/90 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200",
+            "hover:-translate-y-0.5 hover:border-slate-500 hover:bg-slate-900 hover:shadow-lg hover:shadow-slate-950/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-nina-red/80",
+            isOngoing
+              ? "border-nina-red/80"
+              : isFinished
+                ? "border-slate-600"
+                : "border-slate-700/80"
+          )}
         >
-          {homeScore}
-        </text>
-      )}
-
-      <text
-        x={x + 10}
-        y={y + (3 * CARD_H) / 4 + 4}
-        fontSize={10}
-        fontWeight={awayWon ? "800" : "500"}
-        fill={awayWon ? "#ffffff" : "#94a3b8"}
-        dominantBaseline="middle"
-      >
-        {awayName.length > 14 ? awayName.slice(0, 13) + "…" : awayName}
-      </text>
-      {awayScore !== undefined && awayScore !== null && (
-        <text
-          x={x + CARD_W - 10}
-          y={y + (3 * CARD_H) / 4 + 4}
-          fontSize={11}
-          fontWeight="800"
-          fill={awayWon ? "#ffffff" : "#64748b"}
-          textAnchor="end"
-          dominantBaseline="middle"
-        >
-          {awayScore}
-        </text>
-      )}
+          <TeamRow name={homeName} score={homeScore} won={homeWon} />
+          <div className="my-0.5 border-t border-slate-800/90" />
+          <TeamRow name={awayName} score={awayScore} won={awayWon} />
+          {isOngoing && (
+            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-nina-red" />
+          )}
+          {advanceLabel && (
+            <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 rounded-full border border-amber-500/40 bg-slate-950 px-1.5 py-px text-[8px] font-black tracking-wider text-amber-400 uppercase shadow">
+              {advanceLabel}
+            </span>
+          )}
+        </div>
+      </foreignObject>
     </g>
   )
 }
@@ -628,6 +682,51 @@ function splitRounds(rounds: BracketRounds): {
   return { left: left as BracketRounds, right: right as BracketRounds }
 }
 
+function mergeRoundMatches(
+  templateMatches: BracketMatch[],
+  apiMatches: BracketMatch[] | undefined
+) {
+  if (!apiMatches?.length) return templateMatches
+
+  const apiBySlot = new Map<number, BracketMatch>()
+  apiMatches.forEach((match, index) => {
+    const slot = Number.isInteger(match.slot) ? match.slot : index
+    apiBySlot.set(slot, { ...match, slot })
+  })
+
+  const merged = templateMatches.map(
+    (templateMatch) => apiBySlot.get(templateMatch.slot) ?? templateMatch
+  )
+
+  const templateSlots = new Set(templateMatches.map((match) => match.slot))
+  const extraMatches = [...apiBySlot.values()]
+    .filter((match) => !templateSlots.has(match.slot))
+    .sort((a, b) => a.slot - b.slot)
+
+  return [...merged, ...extraMatches]
+}
+
+function mergeBracketWithTemplate(
+  template: BracketRounds,
+  apiRounds: Partial<BracketRounds> | null
+): BracketRounds {
+  if (!apiRounds) return template
+
+  return ROUND_KEYS.reduce((rounds, key) => {
+    rounds[key] = mergeRoundMatches(template[key], apiRounds[key])
+    return rounds
+  }, {} as BracketRounds)
+}
+
+function hasApiBracketData(apiRounds: Partial<BracketRounds> | null) {
+  return Boolean(
+    apiRounds &&
+    ROUND_KEYS.some((key) =>
+      apiRounds[key]?.some((match) => match.home.name || match.away.name)
+    )
+  )
+}
+
 // ==========================================
 // Main bracket component
 // ==========================================
@@ -651,21 +750,8 @@ export function KnockoutBracketSection() {
   }
 
   const template = generateKnockoutTemplate()
-  const rounds: BracketRounds = data
-    ? {
-        r32: data.r32?.length ? data.r32 : template.r32,
-        r16: data.r16?.length ? data.r16 : template.r16,
-        qf: data.qf?.length ? data.qf : template.qf,
-        sf: data.sf?.length ? data.sf : template.sf,
-        final: data.final?.length ? data.final : template.final,
-        third: data.third?.length ? data.third : template.third,
-      }
-    : template
-
-  const hasRealData =
-    data &&
-    (data.r32.some((m) => m.home.name && !m.home.name.includes("Grupo")) ||
-      data.r16.some((m) => m.home.name && !m.home.name.includes("Vencedor")))
+  const rounds = mergeBracketWithTemplate(template, data)
+  const hasRealData = hasApiBracketData(data)
 
   const { left: leftRounds, right: rightRounds } = splitRounds(rounds)
 
@@ -768,7 +854,7 @@ export function KnockoutBracketSection() {
                 const matches = leftRounds[rk] ?? []
                 const depth = ROUND_DEPTH[rk] ?? 0
                 return matches.map((match) => (
-                  <MatchCardSVG
+                  <MatchCard
                     key={match.id}
                     x={leftColX(colIdx)}
                     y={cardY(depth, match.slot)}
@@ -808,7 +894,7 @@ export function KnockoutBracketSection() {
                 const matches = rightRounds[rk] ?? []
                 const depth = ROUND_DEPTH[rk] ?? 0
                 return matches.map((match) => (
-                  <MatchCardSVG
+                  <MatchCard
                     key={`right-${match.id}`}
                     x={rightColX(colIdx)}
                     y={cardY(depth, match.slot)}
@@ -832,7 +918,7 @@ export function KnockoutBracketSection() {
               />
 
               {/* ---- Final card ---- */}
-              <MatchCardSVG x={cx} y={cy} match={rounds.final?.[0] ?? null} />
+              <MatchCard x={cx} y={cy} match={rounds.final?.[0] ?? null} />
 
               {/* ---- 3º lugar ---- */}
               {rounds.third?.[0] && (
@@ -848,7 +934,7 @@ export function KnockoutBracketSection() {
                   >
                     3º LUGAR
                   </text>
-                  <MatchCardSVG
+                  <MatchCard
                     x={cx}
                     y={cy + CARD_H + 26}
                     match={rounds.third[0]}

@@ -2,6 +2,7 @@ import { getToken } from "./auth"
 import type {
   ActiveRoundResponse,
   AdminMatchesPage,
+  AdvanceMethod,
   AuthResponse,
   BolaoStats,
   BracketData,
@@ -92,11 +93,16 @@ export function getMatchDetails(matchId: number) {
 export function saveGuess(
   match_id: number,
   home_guess: number,
-  away_guess: number
+  away_guess: number,
+  advancing_team?: "home" | "away" | null,
+  advance_method?: AdvanceMethod | null
 ) {
+  const payload: Record<string, unknown> = { match_id, home_guess, away_guess }
+  if (advancing_team) payload.advancing_team = advancing_team
+  if (advance_method) payload.advance_method = advance_method
   return request<{ message: string }>("/api/guesses", {
     method: "POST",
-    body: JSON.stringify({ match_id, home_guess, away_guess }),
+    body: JSON.stringify(payload),
   })
 }
 
@@ -118,6 +124,24 @@ export function updateMatchScore(
   }>(`/api/admin/matches/${matchId}/score`, {
     method: "POST",
     body: JSON.stringify({ home_score, away_score }),
+  })
+}
+
+// Admin: definir resultado de mata-mata (quem avança + método)
+export function updateKnockoutResult(
+  matchId: number,
+  winner_team: "home" | "away",
+  advance_method: AdvanceMethod
+) {
+  return request<{
+    message: string
+    match_id: number
+    winner_team: "home" | "away"
+    advance_method: AdvanceMethod
+    recalculated: number
+  }>(`/api/admin/matches/${matchId}/knockout`, {
+    method: "POST",
+    body: JSON.stringify({ winner_team, advance_method }),
   })
 }
 
