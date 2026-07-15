@@ -219,13 +219,22 @@ export default function RankingPage() {
       const nonUpcoming = rounds.filter(
         (r: RoundSummary) => r.status !== "upcoming"
       )
-      const results = await Promise.all(
+      // Promise.allSettled: uma rodada falhando não derruba a aba inteira
+      const results = await Promise.allSettled(
         nonUpcoming.map((r: RoundSummary) => getRoundById(r.id))
       )
       const allMatches: LockedMatch[] = []
-      results.forEach((res, idx) => {
+      results.forEach((result, idx) => {
+        if (result.status !== "fulfilled") {
+          console.error(
+            "Erro ao carregar rodada do bolão:",
+            nonUpcoming[idx]?.id,
+            result.reason
+          )
+          return
+        }
         const roundName = nonUpcoming[idx].name
-        res.matches.forEach((m: Match) => {
+        result.value.matches.forEach((m: Match) => {
           if (isLocked(m)) {
             allMatches.push({ ...m, round_name: roundName })
           }
@@ -295,7 +304,12 @@ export default function RankingPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="ranking">
+        <Tabs
+          defaultValue="ranking"
+          onValueChange={(value) => {
+            if (value === "bolao") void loadBolao()
+          }}
+        >
           <TabsList className="mb-2 h-10 w-full rounded-xl border border-slate-800/60 bg-slate-900/60 p-1">
             <TabsTrigger
               value="ranking"
@@ -306,7 +320,6 @@ export default function RankingPage() {
             <TabsTrigger
               value="bolao"
               className="flex-1 rounded-lg text-xs font-bold tracking-wide uppercase data-[state=active]:bg-slate-800 data-[state=active]:text-white"
-              onClick={() => loadBolao()}
             >
               Bolão
             </TabsTrigger>
