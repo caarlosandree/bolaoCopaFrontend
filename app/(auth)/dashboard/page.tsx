@@ -321,6 +321,33 @@ export default function DashboardPage() {
     return diff <= 10 * 60 * 1000
   }
 
+  /** Janela de edição do desempate após o kickoff (alinha com o backend). */
+  const DESEMPATE_EDIT_MINUTES = 80
+
+  /** Desempate (quem avança + ET/pênaltis) editável após lockout/início até 80 min
+   * de jogo, se o palpite de placar já for empate em mata-mata. */
+  function canEditDesempate(match: Match, g: GuessState): boolean {
+    if (round?.status === "upcoming") return false
+    if (match.is_knockout !== true) return false
+    if (match.status === "finished") return false
+    if (g.homeGuess === "" || g.awayGuess === "") return false
+    if (g.homeGuess !== g.awayGuess) return false
+
+    const locked = isLocked(match)
+    if (!locked) return true
+
+    // Após 80 min do kickoff, desempate fecha (evita mudança no fim / pós-jogo)
+    const elapsedMs =
+      currentTime.getTime() - new Date(match.match_time).getTime()
+    if (elapsedMs > DESEMPATE_EDIT_MINUTES * 60 * 1000) return false
+
+    // Após bloqueio do placar: só se já existir palpite de empate salvo
+    return (
+      match.user_guess != null &&
+      match.user_guess.home_guess === match.user_guess.away_guess
+    )
+  }
+
   function formatCountdown(matchTime: string): string {
     const diff = new Date(matchTime).getTime() - currentTime.getTime()
     if (diff <= 0) return "Em andamento"
@@ -561,13 +588,7 @@ export default function DashboardPage() {
                   const minutesLeft = diffMs / 60000
                   const warning = minutesLeft > 0 && minutesLeft <= 15
 
-                  const isEditableGuess =
-                    !locked &&
-                    match.status === "scheduled" &&
-                    g.homeGuess !== "" &&
-                    g.awayGuess !== "" &&
-                    g.homeGuess === g.awayGuess &&
-                    match.is_knockout === true
+                  const isDesempateEditable = canEditDesempate(match, g)
 
                   const cardStyle =
                     !locked && match.status === "scheduled"
@@ -761,13 +782,23 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        {/* Zona 2.5: Desempate mata-mata (empate em jogo eliminatório) */}
-                        {isEditableGuess && (
+                        {/* Zona 2.5: Desempate mata-mata (empate em jogo eliminatório).
+                            Editável também após lockout/início se o placar já for empate. */}
+                        {isDesempateEditable && (
                           <div className="rounded-xl border border-nina-purple/30 bg-nina-purple/5 px-3 py-2.5">
                             <p className="mb-2 flex items-center gap-1.5 text-[10px] font-black tracking-wider text-nina-purple uppercase">
                               <Trophy className="h-3 w-3" />
-                              Empate em mata-mata — defina o desempate
+                              {locked
+                                ? "Empate — ainda pode definir o desempate"
+                                : "Empate em mata-mata — defina o desempate"}
                             </p>
+                            {locked && (
+                              <p className="mb-2 text-[10px] leading-snug text-slate-400">
+                                O placar do palpite está bloqueado; só quem
+                                avança e o método (prorrogação/pênaltis) podem
+                                ser alterados até os 80 minutos de jogo.
+                              </p>
+                            )}
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                               <label className="flex flex-col gap-1 sm:flex-1">
                                 <span className="text-[10px] font-bold text-slate-400">
@@ -836,6 +867,24 @@ export default function DashboardPage() {
                                 </Select>
                               </label>
                             </div>
+                            {g.loading && (
+                              <p className="mt-2 text-center text-[10px] text-slate-400">
+                                Salvando desempate...
+                              </p>
+                            )}
+                            {!g.loading &&
+                              g.saved &&
+                              g.advancingTeam &&
+                              g.advanceMethod && (
+                                <p className="mt-2 text-center text-[10px] font-bold text-green-400">
+                                  Desempate salvo
+                                </p>
+                              )}
+                            {!g.loading && g.error && (
+                              <p className="mt-2 text-center text-[10px] text-amber-400">
+                                {g.error}
+                              </p>
+                            )}
                           </div>
                         )}
 
@@ -902,22 +951,29 @@ export default function DashboardPage() {
                                   Atualiza a cada 3 min
                                 </span>
                               </div>
-                              {match.user_guess && (
+                              {(match.user_guess || g.homeGuess !== "") && (
                                 <p className="mt-1 text-[10px] text-slate-500">
-                                  Seu palpite: {match.user_guess.home_guess} ×{" "}
-                                  {match.user_guess.away_guess}
-                                  {match.user_guess.advancing_team && (
+                                  Seu palpite:{" "}
+                                  {match.user_guess
+                                    ? `${match.user_guess.home_guess} × ${match.user_guess.away_guess}`
+                                    : `${g.homeGuess} × ${g.awayGuess}`}
+                                  {g.advancingTeam && g.advanceMethod && (
                                     <>
                                       {" · "}
                                       Avança:{" "}
-                                      {match.user_guess.advancing_team ===
-                                      "home"
+                                      {g.advancingTeam === "home"
                                         ? match.home_team
                                         : match.away_team}
-                                      {match.user_guess.advance_method &&
-                                        ` (${match.user_guess.advance_method === "et" ? "Prorr." : "Pênaltis"})`}
+                                      {` (${g.advanceMethod === "et" ? "Prorr." : "Pênaltis"})`}
                                     </>
                                   )}
+                                  {isDesempateEditable &&
+                                    (!g.advancingTeam || !g.advanceMethod) && (
+                                      <span className="text-nina-purple">
+                                        {" "}
+                                        · complete o desempate acima
+                                      </span>
+                                    )}
                                 </p>
                               )}
                             </div>
@@ -931,7 +987,7 @@ export default function DashboardPage() {
                                   ? `${g.homeGuess || 0} × ${g.awayGuess || 0}`
                                   : "Sem palpite"}
                               </span>
-                              {g.advancingTeam && g.advanceMethod && (
+                              {g.advancingTeam && g.advanceMethod ? (
                                 <span className="mt-0.5 block text-[10px] font-bold text-nina-purple">
                                   Avança:{" "}
                                   {g.advancingTeam === "home"
@@ -942,7 +998,11 @@ export default function DashboardPage() {
                                     ? "Prorrogação"
                                     : "Pênaltis"}
                                 </span>
-                              )}
+                              ) : isDesempateEditable ? (
+                                <span className="mt-0.5 block text-[10px] font-bold text-nina-purple">
+                                  Complete o desempate acima
+                                </span>
+                              ) : null}
                             </div>
                           ) : g.loading ? (
                             <div className="flex items-center justify-center gap-2 py-1.5 text-xs text-slate-400">
